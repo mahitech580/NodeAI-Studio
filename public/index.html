@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>NodeAI Studio</title>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+<div class="app">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+
+        <div class="brand">
+            <div class="logo">N</div>
+
+            <div>
+                <h1>NodeAI Studio</h1>
+                <p>AI Developer Assistant</p>
+            </div>
+        </div>
+
+        <div class="tagline">
+            One Node.js API.<br>
+            Every AI workflow.
+        </div>
+
+        <div class="tools">
+
+            <button class="tool active" data-mode="chat">
+                <span>??</span>
+                <span>AI Chat</span>
+            </button>
+
+            <button class="tool" data-mode="code">
+                <span>??</span>
+                <span>Code Generator</span>
+            </button>
+
+            <button class="tool" data-mode="debug">
+                <span>??</span>
+                <span>AI Debugger</span>
+            </button>
+
+            <button class="tool" data-mode="sql">
+                <span>???</span>
+                <span>SQL Assistant</span>
+            </button>
+
+        </div>
+
+        <div class="history-section">
+
+            <div class="history-title">
+                <span>Recent History</span>
+
+                <button id="clearHistory">
+                    Clear
+                </button>
+            </div>
+
+            <div id="history">
+                <div class="history-empty">
+                    No history yet
+                </div>
+            </div>
+
+        </div>
+
+        <div class="sidebar-footer">
+            NODEAI STUDIO v1.0
+        </div>
+
+    </aside>
+
+
+    <!-- MAIN -->
+    <main class="main">
+
+        <header class="header">
+
+            <div>
+
+                <div class="small-title">
+                    DEVELOPER WORKSPACE
+                </div>
+
+                <h2 id="pageTitle">
+                    AI Chat
+                </h2>
+
+            </div>
+
+            <div id="status" class="status">
+                Checking...
+            </div>
+
+        </header>
+
+
+        <!-- HERO -->
+
+        <section class="hero">
+
+            <div class="hero-badge">
+                ? AI POWERED
+            </div>
+
+            <h3 id="heroTitle">
+                Build faster with AI
+            </h3>
+
+            <p id="heroDescription">
+                Ask coding questions, explain concepts,
+                or solve development problems.
+            </p>
+
+        </section>
+
+
+        <!-- WORKSPACE -->
+
+        <section class="workspace">
+
+
+            <!-- INPUT -->
+
+            <div class="panel">
+
+                <div class="panel-header">
+
+                    <div>
+                        <span class="panel-title">
+                            Your Request
+                        </span>
+
+                        <span id="modeLabel" class="mode-label">
+                            CHAT
+                        </span>
+                    </div>
+
+                </div>
+
+
+                <div class="editor">
+
+                    <textarea
+                        id="prompt"
+                        placeholder="Ask a developer question..."
+                        spellcheck="false"
+                    ></textarea>
+
+                </div>
+
+
+                <div class="panel-footer">
+
+                    <button
+                        id="clear"
+                        class="button secondary"
+                    >
+                        Clear
+                    </button>
+
+                    <button
+                        id="generate"
+                        class="button primary"
+                    >
+                        ? Generate
+                    </button>
+
+                </div>
+
+            </div>
+
+
+            <!-- RESPONSE -->
+
+            <div class="panel">
+
+                <div class="panel-header">
+
+                    <span class="panel-title">
+                        AI Response
+                    </span>
+
+                    <button
+                        id="copy"
+                        class="copy-button"
+                    >
+                        Copy
+                    </button>
+
+                </div>
+
+
+                <div
+                    id="response"
+                    class="response empty"
+                >
+
+                    <div class="empty-content">
+
+                        <div class="empty-icon">
+                            ?
+                        </div>
+
+                        <h4>
+                            Ready when you are
+                        </h4>
+
+                        <p>
+                            Enter a request and click
+                            Generate.
+                        </p>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- QUICK EXAMPLES -->
+
+        <section class="examples">
+
+            <div class="examples-title">
+                QUICK EXAMPLES
+            </div>
+
+            <div class="example-list">
+
+                <button
+                    class="example"
+                    data-example="Explain async and await in JavaScript with a simple example."
+                >
+                    Explain async/await
+                </button>
+
+                <button
+                    class="example"
+                    data-example="Create a Node.js REST API for a todo application."
+                >
+                    Create REST API
+                </button>
+
+                <button
+                    class="example"
+                    data-example="Find the top 10 customers by revenue."
+                >
+                    Generate SQL
+                </button>
+
+                <button
+                    class="example"
+                    data-example="Why does my Express.js server return Cannot GET /?"
+                >
+                    Debug Express
+                </button>
+
+            </div>
+
+        </section>
+
+    </main>
+
+</div>
+
+
+<script src="script.js"></script>
+
+</body>
+</html>
