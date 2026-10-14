@@ -1,281 +1,173 @@
-<!DOCTYPE html>
-<html lang="en">
+<!doctype html>
+<html lang="en" data-theme="dark">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    <title>NodeAI Studio</title>
-
-    <link rel="stylesheet" href="style.css">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0a0b12">
+  <meta name="description" content="NodeAI Studio is a focused AI workspace for coding, debugging, SQL, and developer questions.">
+  <title>NodeAI Studio — AI Developer Workspace</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <script src="script.js" defer></script>
 </head>
-
 <body>
+  <a class="skip-link" href="#main">Skip to workspace</a>
+  <div class="ambient ambient-one" aria-hidden="true"></div>
+  <div class="ambient ambient-two" aria-hidden="true"></div>
 
-<div class="app">
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="Workspace navigation">
+      <a class="brand" href="/" aria-label="NodeAI Studio home">
+        <span class="brand-mark">N<span>.</span></span>
+        <span class="brand-copy">
+          <strong>NodeAI <span>Studio</span></strong>
+          <small>DEVELOPER WORKSPACE</small>
+        </span>
+      </a>
 
-    <!-- SIDEBAR -->
-    <aside class="sidebar">
+      <button class="new-session" id="newSession" type="button">
+        <span class="new-session-plus" aria-hidden="true">+</span>
+        <span>New workspace</span>
+        <kbd>⌘ K</kbd>
+      </button>
 
-        <div class="brand">
-            <div class="logo">N</div>
+      <div class="nav-label">WORKFLOWS <span>04</span></div>
+      <nav class="mode-nav" aria-label="AI workflows">
+        <button class="mode-button active" type="button" data-mode="chat" aria-pressed="true">
+          <span class="mode-icon icon-chat" aria-hidden="true">✳</span><span>AI Chat</span><span class="mode-arrow">↗</span>
+        </button>
+        <button class="mode-button" type="button" data-mode="code" aria-pressed="false">
+          <span class="mode-icon icon-code" aria-hidden="true">⌘</span><span>Code Generator</span><span class="mode-arrow">↗</span>
+        </button>
+        <button class="mode-button" type="button" data-mode="debug" aria-pressed="false">
+          <span class="mode-icon icon-debug" aria-hidden="true">⌁</span><span>AI Debugger</span><span class="mode-arrow">↗</span>
+        </button>
+        <button class="mode-button" type="button" data-mode="sql" aria-pressed="false">
+          <span class="mode-icon icon-sql" aria-hidden="true">▤</span><span>SQL Assistant</span><span class="mode-arrow">↗</span>
+        </button>
+      </nav>
 
-            <div>
-                <h1>NodeAI Studio</h1>
-                <p>AI Developer Assistant</p>
-            </div>
+      <section class="history-section" aria-labelledby="historyHeading">
+        <div class="history-heading">
+          <h2 id="historyHeading">Recent sessions</h2>
+          <span id="historyCount" class="count-pill">0</span>
         </div>
-
-        <div class="tagline">
-            One Node.js API.<br>
-            Every AI workflow.
+        <label class="history-search">
+          <span aria-hidden="true">⌕</span>
+          <input id="historySearch" type="search" placeholder="Find a session…" autocomplete="off" aria-label="Search recent sessions">
+          <kbd>/</kbd>
+        </label>
+        <div id="history" class="history-list" aria-live="polite">
+          <div class="history-empty"><span class="history-empty-mark">◌</span><span>Your sessions will appear here.</span></div>
         </div>
+        <button id="clearHistory" class="clear-history" type="button">Clear conversation history</button>
+      </section>
 
-        <div class="tools">
-
-            <button class="tool active" data-mode="chat">
-                <span>??</span>
-                <span>AI Chat</span>
-            </button>
-
-            <button class="tool" data-mode="code">
-                <span>??</span>
-                <span>Code Generator</span>
-            </button>
-
-            <button class="tool" data-mode="debug">
-                <span>??</span>
-                <span>AI Debugger</span>
-            </button>
-
-            <button class="tool" data-mode="sql">
-                <span>???</span>
-                <span>SQL Assistant</span>
-            </button>
-
-        </div>
-
-        <div class="history-section">
-
-            <div class="history-title">
-                <span>Recent History</span>
-
-                <button id="clearHistory">
-                    Clear
-                </button>
-            </div>
-
-            <div id="history">
-                <div class="history-empty">
-                    No history yet
-                </div>
-            </div>
-
-        </div>
-
-        <div class="sidebar-footer">
-            NODEAI STUDIO v1.0
-        </div>
-
+      <div class="sidebar-bottom">
+        <div class="privacy-note"><span class="privacy-dot"></span><span>Private by default</span></div>
+        <div class="sidebar-footer"><span class="footer-mark">N.</span><span>Built for the next idea.</span><span class="version">v2.0</span></div>
+      </div>
     </aside>
 
+    <main id="main" class="main-area">
+      <header class="topbar">
+        <div class="breadcrumbs"><span>Workspace</span><span class="crumb-divider">/</span><strong id="breadcrumbMode">AI Chat</strong></div>
+        <div class="topbar-actions">
+          <span class="server-status" id="status"><span class="status-dot"></span><span id="statusText">Connecting…</span></span>
+          <button id="themeToggle" class="icon-button" type="button" aria-label="Switch to light theme" title="Toggle theme"><span id="themeIcon" aria-hidden="true">☼</span></button>
+          <button id="exportAnswer" class="export-button" type="button" disabled><span aria-hidden="true">⇩</span> Export</button>
+        </div>
+      </header>
 
-    <!-- MAIN -->
-    <main class="main">
-
-        <header class="header">
-
-            <div>
-
-                <div class="small-title">
-                    DEVELOPER WORKSPACE
-                </div>
-
-                <h2 id="pageTitle">
-                    AI Chat
-                </h2>
-
-            </div>
-
-            <div id="status" class="status">
-                Checking...
-            </div>
-
-        </header>
-
-
-        <!-- HERO -->
-
+      <div class="content-wrap">
         <section class="hero">
-
-            <div class="hero-badge">
-                ? AI POWERED
-            </div>
-
-            <h3 id="heroTitle">
-                Build faster with AI
-            </h3>
-
-            <p id="heroDescription">
-                Ask coding questions, explain concepts,
-                or solve development problems.
-            </p>
-
+          <div class="hero-copy">
+            <div class="eyebrow"><span class="eyebrow-spark">✳</span> YOUR AI-POWERED WORKBENCH <span class="eyebrow-line"></span></div>
+            <h1>Think clearly.<br><span>Build brilliantly.</span></h1>
+            <p>From first sketch to final fix, make your next move with an AI partner built for developers.</p>
+            <div class="hero-trust"><span class="trust-check">✓</span> Four focused workflows <span class="trust-separator">·</span> One creative workspace</div>
+          </div>
+          <div class="hero-art" aria-hidden="true">
+            <div class="art-orbit orbit-outer"></div>
+            <div class="art-orbit orbit-inner"></div>
+            <div class="art-core"><span>N</span><i></i></div>
+            <span class="art-node node-one">{"{ }"}</span>
+            <span class="art-node node-two">AI</span>
+            <span class="art-node node-three">⌘</span>
+            <span class="art-node node-four">✳</span>
+            <div class="art-spark spark-one"></div><div class="art-spark spark-two"></div>
+          </div>
+          <div class="hero-index"><span>01</span><span class="hero-index-line"></span><span>IDEAS IN MOTION</span></div>
         </section>
 
-
-        <!-- WORKSPACE -->
-
-        <section class="workspace">
-
-
-            <!-- INPUT -->
-
-            <div class="panel">
-
-                <div class="panel-header">
-
-                    <div>
-                        <span class="panel-title">
-                            Your Request
-                        </span>
-
-                        <span id="modeLabel" class="mode-label">
-                            CHAT
-                        </span>
-                    </div>
-
-                </div>
-
-
-                <div class="editor">
-
-                    <textarea
-                        id="prompt"
-                        placeholder="Ask a developer question..."
-                        spellcheck="false"
-                    ></textarea>
-
-                </div>
-
-
-                <div class="panel-footer">
-
-                    <button
-                        id="clear"
-                        class="button secondary"
-                    >
-                        Clear
-                    </button>
-
-                    <button
-                        id="generate"
-                        class="button primary"
-                    >
-                        ? Generate
-                    </button>
-
-                </div>
-
-            </div>
-
-
-            <!-- RESPONSE -->
-
-            <div class="panel">
-
-                <div class="panel-header">
-
-                    <span class="panel-title">
-                        AI Response
-                    </span>
-
-                    <button
-                        id="copy"
-                        class="copy-button"
-                    >
-                        Copy
-                    </button>
-
-                </div>
-
-
-                <div
-                    id="response"
-                    class="response empty"
-                >
-
-                    <div class="empty-content">
-
-                        <div class="empty-icon">
-                            ?
-                        </div>
-
-                        <h4>
-                            Ready when you are
-                        </h4>
-
-                        <p>
-                            Enter a request and click
-                            Generate.
-                        </p>
-
-                    </div>
-
-                </div>
-
-            </div>
-
+        <section class="metrics" aria-label="Workspace overview">
+          <article class="metric-card">
+            <span class="metric-icon violet" aria-hidden="true">✳</span>
+            <div><span class="metric-label">WORKFLOWS</span><strong>04</strong><small>Made for dev tasks</small></div>
+            <span class="metric-sparkline spark-violet" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+          </article>
+          <article class="metric-card">
+            <span class="metric-icon cyan" aria-hidden="true">⌁</span>
+            <div><span class="metric-label">SESSIONS SAVED</span><strong id="sessionMetric">—</strong><small>Stored on this server</small></div>
+            <span class="metric-sparkline spark-cyan" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+          </article>
+          <article class="metric-card">
+            <span class="metric-icon pink" aria-hidden="true">↗</span>
+            <div><span class="metric-label">LAST RESPONSE</span><strong id="latencyMetric">—</strong><small id="latencyCaption">Ready for a prompt</small></div>
+            <span class="metric-pulse" aria-hidden="true"><i></i><i></i><i></i></span>
+          </article>
         </section>
 
-
-        <!-- QUICK EXAMPLES -->
-
-        <section class="examples">
-
-            <div class="examples-title">
-                QUICK EXAMPLES
+        <section class="workbench" aria-label="AI workbench">
+          <article class="panel composer-panel">
+            <div class="panel-topline"><div class="panel-heading"><span class="panel-step">01</span><div><h2>Your prompt</h2><p>Give your idea a little direction.</p></div></div><span id="modeBadge" class="mode-badge"><span class="badge-dot"></span> CHAT</span></div>
+            <div class="prompt-editor">
+              <label class="sr-only" for="prompt">Describe what you want help with</label>
+              <textarea id="prompt" maxlength="12000" placeholder="What are you working on today?"></textarea>
+              <div class="editor-bottom"><span><span class="keyboard-symbol">↵</span> <kbd>Ctrl</kbd> + <kbd>Enter</kbd> to generate</span><span id="charCount">0 / 12,000</span></div>
             </div>
+            <div class="prompt-suggestions"><span class="suggestion-label">TRY A STARTER</span><div id="promptChips" class="prompt-chips">
+              <button class="prompt-chip" type="button" data-mode="chat" data-prompt="Explain the JavaScript event loop with a practical example.">Explain the event loop <span>↗</span></button>
+              <button class="prompt-chip" type="button" data-mode="chat" data-prompt="Review this function for readability, edge cases, and performance:">Review a function <span>↗</span></button>
+            </div></div>
+            <div class="composer-actions"><button id="clearPrompt" class="button-quiet" type="button">Clear prompt</button><button id="generate" class="generate-button" type="button"><span class="generate-icon" aria-hidden="true">✳</span><span id="generateLabel">Generate response</span><span class="generate-arrow" aria-hidden="true">↗</span></button></div>
+            <div class="composer-footnote"><span class="lock-icon" aria-hidden="true">⌑</span><span>Prompts are sent to your configured server. Avoid entering secrets.</span></div>
+          </article>
 
-            <div class="example-list">
-
-                <button
-                    class="example"
-                    data-example="Explain async and await in JavaScript with a simple example."
-                >
-                    Explain async/await
-                </button>
-
-                <button
-                    class="example"
-                    data-example="Create a Node.js REST API for a todo application."
-                >
-                    Create REST API
-                </button>
-
-                <button
-                    class="example"
-                    data-example="Find the top 10 customers by revenue."
-                >
-                    Generate SQL
-                </button>
-
-                <button
-                    class="example"
-                    data-example="Why does my Express.js server return Cannot GET /?"
-                >
-                    Debug Express
-                </button>
-
+          <article class="panel response-panel">
+            <div class="panel-topline response-topline"><div class="panel-heading"><span class="panel-step step-cyan">02</span><div><h2>Studio output</h2><p>Your ideas, brought into focus.</p></div></div><div class="response-actions"><button id="copyAnswer" class="small-action" type="button" disabled><span aria-hidden="true">▢</span> Copy</button></div></div>
+            <div id="responseBody" class="response-body">
+              <div id="emptyResponse" class="response-empty">
+                <div class="empty-illustration"><div class="empty-illustration-ring ring-a"></div><div class="empty-illustration-ring ring-b"></div><div class="empty-illustration-core">✳</div><span class="empty-star star-a">✦</span><span class="empty-star star-b">·</span></div>
+                <h3>A clean slate.</h3>
+                <p>Your next breakthrough begins with a good question. Write a prompt and let’s work through it.</p>
+                <span class="empty-tip"><span aria-hidden="true">↳</span> Start with a suggested prompt</span>
+              </div>
+              <div id="responseResult" class="response-result" hidden>
+                <div class="result-meta"><span id="resultType" class="result-type"><span class="result-type-dot"></span> MODEL RESPONSE</span><span id="resultTime"></span></div>
+                <pre id="answerText" tabindex="0"></pre>
+                <div class="result-footer"><span id="resultModel">Response ready</span><button id="copyAnswerBottom" type="button" class="text-action">Copy output <span aria-hidden="true">↗</span></button></div>
+              </div>
             </div>
-
+            <div class="response-bottom"><span class="response-bottom-dot"></span><span id="responseFootnote">Waiting for your first prompt</span><span class="response-bottom-right">NODEAI / OUTPUT</span></div>
+          </article>
         </section>
 
+        <section class="below-workbench">
+          <div class="section-intro"><span class="section-kicker">THE TOOLKIT</span><h2>What are we solving today?</h2><p>Pick a path. Start anywhere.</p></div>
+          <div class="workflow-cards">
+            <button class="workflow-card" type="button" data-mode="code" data-prompt="Build a production-minded Express REST API for a task manager. Include input validation, consistent JSON errors, and a short explanation."><span class="workflow-card-icon code-card-icon">⌘</span><span class="workflow-card-copy"><strong>Build something</strong><small>Generate clear, maintainable code from a plain-language idea.</small><span class="workflow-link">Open code generator <b>↗</b></span></span><span class="workflow-number">01</span></button>
+            <button class="workflow-card" type="button" data-mode="debug" data-prompt="Help me debug this issue. I will share the code, exact error message, expected behavior, and actual behavior. Explain the likely root cause and show a corrected version."><span class="workflow-card-icon debug-card-icon">⌁</span><span class="workflow-card-copy"><strong>Untangle a bug</strong><small>Find likely root causes and turn errors into actionable fixes.</small><span class="workflow-link">Open AI debugger <b>↗</b></span></span><span class="workflow-number">02</span></button>
+            <button class="workflow-card" type="button" data-mode="sql" data-prompt="Write an SQL query to find the top 10 customers by total order revenue. Assume customers(id, name) and orders(id, customer_id, total_amount). Explain the joins and aggregation."><span class="workflow-card-icon sql-card-icon">▤</span><span class="workflow-card-copy"><strong>Query your data</strong><small>Draft, refine, and understand SQL with schema-aware prompts.</small><span class="workflow-link">Open SQL assistant <b>↗</b></span></span><span class="workflow-number">03</span></button>
+          </div>
+        </section>
+
+        <footer class="page-footer"><span><b>N.</b> NODEAI STUDIO</span><span>Crafted for curious minds <i>✳</i></span><a href="https://github.com/mahitech580/NodeAI-Studio" target="_blank" rel="noreferrer">Open source <span aria-hidden="true">↗</span></a></footer>
+      </div>
     </main>
-
-</div>
-
-
-<script src="script.js"></script>
-
+  </div>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
 </body>
 </html>
