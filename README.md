@@ -45,18 +45,30 @@ Without AI_API_KEY, the backend stays in Demo mode. Demo text is labelled and is
 | CORS_ORIGIN | Comma-separated exact allowed frontend origins for cross-origin use. |
 | HISTORY_FILE | Optional path to a writable JSON history file. |
 
-### GitHub Pages and separate APIs
+### Live Render backend and GitHub Pages
 
-GitHub Pages can host the static interface, not Express. Deploy the Node service separately, set CORS_ORIGIN to the precise frontend origin, and set window.NODEAI_CONFIG.apiBaseUrl in public/config.js to the API's HTTPS origin. Leave the value empty for same-origin Node deployments. Static hosting can load the interface without a backend, but generation, health, and history need a reachable API.
+The published [NodeAI Studio frontend](https://mahitech580.github.io/NodeAI-Studio/) is configured to call the [NodeAI Render API](https://nodeai-studio-api-mahitech580.onrender.com). The API exposes:
 
-The backend uses file-backed history. Ephemeral hosts can lose the file during deploys or restarts; use a persistent disk or replace the storage layer with a database if persistence matters. There are no user accounts or multi-tenant isolation, so do not expose the service as a private multi-user product without authentication and scoped storage.
+- `GET /api/health` for liveness and whether live AI is configured.
+- `GET /api/ready` for the history-storage readiness check; Render's Blueprint uses this health-check path.
+- `GET /api/config` for runtime capabilities.
+- `POST /api/ai` and `POST /api/ai/stream` for generation.
+- `GET /api/history` and `DELETE /api/history` for the current browser session's history.
+
+The Render service should use `NODE_ENV=production`, `TRUST_PROXY=true`, and `CORS_ORIGIN=https://mahitech580.github.io`. Trusting one proxy hop lets IP-based rate limiting see the client address forwarded by Render. A `X-Request-ID` header is attached to each request so errors can be correlated with server logs.
+
+History is partitioned by a random browser-session UUID sent in `X-NodeAI-Session`; clearing history removes only the current browser session's entries. This is a convenience boundary, **not authentication or a secure tenant boundary**—anyone who learns another browser's session UUID could impersonate that session. Do not treat the service as a private multi-user product without authenticated users and server-validated ownership.
+
+History remains file-backed, so Render's ephemeral filesystem may lose it on redeploy or restart. For durable sessions, use persistent storage or a database-backed history adapter.
+
+The deployed backend currently operates in **Demo mode** until `AI_API_KEY` is set in the Render service's private Environment settings. Set `AI_MODEL` there only to a model supported by that key. Never place provider secrets in `public/config.js` or in GitHub.
 
 ## API reference
 
 | Method | Endpoint | Description |
 | --- | --- | --- |
 | GET | /api/health | Service health, demo/live state, configured model name, version, and uptime. |
-| GET | /api/config | Supported modes, response styles, prompt/context limits, and streaming capability. |
+| GET | /api/config | Supported modes, response styles, prompt/context limits, and streaming capability. |\n| GET | /api/ready | History-storage readiness, including a 503 when the configured store is unavailable. |
 | POST | /api/ai | Non-streaming generation for API clients. |
 | POST | /api/ai/stream | Server-sent event stream: meta, delta, done, or error. |
 | GET | /api/history | List saved entries; supports limit, mode, and q. |
