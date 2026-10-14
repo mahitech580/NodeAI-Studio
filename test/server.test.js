@@ -122,8 +122,12 @@ test('live stream forwards validated context and tone settings to provider', asy
   });
   const body = await response.text();
   assert.equal(response.status, 200);
-  assert.match(body, /Contextual answer\./);
+  assert.match(body, /event: delta/);
+  assert.match(body, /Contextual /);
+  assert.match(body, /answer\./);
   assert.match(body, /event: done/);
+  const savedHistory = await (await fetch(base + '/api/history')).json();
+  assert.equal(savedHistory.history[0].answer, 'Contextual answer.');
   assert.equal(captured[0].stream, true);
   assert.equal(captured[0].temperature, 0.35);
   assert.deepEqual(captured[0].messages.slice(1), [...context, { role: 'user', content: 'Add a health endpoint' }]);
