@@ -186,6 +186,9 @@ test('each workflow has its own frontend controls and payload builder', async (t
     assert.ok(html.includes(selector), selector);
   }
   const script = await (await fetch(base + '/script.js')).text();
+  for (const selector of ["modeButtons: $$('.mode-button')", "modeSettingsCards: $$('[data-settings]')"]) {
+    assert.ok(script.includes(selector), 'multi-element workflow selector: ' + selector);
+  }
   for (const setting of [
     'function buildWorkflowPrompt', 'Implementation settings:', 'Debugging context:',
     'SQL settings:', 'elements.modeSettingsCards', 'document.body.dataset.mode = mode'
