@@ -44,13 +44,16 @@ test('health endpoint reports service state without exposing credentials', async
   assert.equal(response.headers.get('cache-control'), 'no-store');
 });
 
-test('public config describes modes, tones, and streaming', async (t) => {
+test('public config describes modes, tones, stream support, and compatible providers', async (t) => {
   const base = await makeServer(t);
   const body = await (await fetch(base + '/api/config')).json();
   assert.deepEqual(body.modes, ['chat', 'code', 'debug', 'sql']);
   assert.deepEqual(body.tones, ['balanced', 'concise', 'deep']);
   assert.equal(body.streaming, true);
   assert.equal(body.maxPromptLength, MAX_PROMPT_LENGTH);
+  assert.deepEqual(body.providers.map((provider) => provider.id), ['openai', 'gemini', 'groq', 'openrouter']);
+  assert.equal(body.credentialTransport, 'request-header-only');
+  assert.equal(JSON.stringify(body).includes('apiKey'), false);
 });
 
 test('AI endpoint rejects invalid prompts, modes, tones and context', async (t) => {
@@ -69,33 +72,32 @@ test('AI endpoint rejects excessive prompt size', async (t) => {
   assert.equal(response.status, 413);
 });
 
-test('non-streaming demo responses are labelled but not persisted on the shared server', async (t) => {
+test('generation refuses to disguise a missing provider as a live or canned answer', async (t) => {
   const base = await makeServer(t);
   const response = await jsonPost(base + '/api/ai', { mode: 'code', tone: 'concise', prompt: 'Build a health endpoint' });
   const result = await response.json();
-  assert.equal(response.status, 200);
-  assert.equal(result.success, true);
-  assert.equal(result.demoMode, true);
-  assert.match(result.answer, /Demo mode is active/i);
+  assert.equal(response.status, 503);
+  assert.equal(result.success, false);
+  assert.equal(result.needsProvider, true);
+  assert.match(result.error, /No live AI provider is connected/i);
+  assert.doesNotMatch(JSON.stringify(result), /Demo mode is active|Request received|Example starter/i);
   const history = await (await fetch(base + '/api/history')).json();
   assert.equal(history.total, 0);
   assert.deepEqual(history.history, []);
   assert.equal(history.storage, 'browser-only');
-  assert.equal(JSON.stringify(history).includes('Build a health endpoint'), false);
 });
 
-test('stream endpoint emits metadata, token deltas, and completion without server-side history', async (t) => {
+test('stream endpoint does not send canned text when no live provider is configured', async (t) => {
   const base = await makeServer(t);
   const response = await jsonPost(base + '/api/ai/stream', {
     mode: 'chat', tone: 'balanced', prompt: 'Explain promises'
   });
-  const text = await response.text();
-  assert.equal(response.status, 200);
-  assert.match(response.headers.get('content-type') || '', /text\/event-stream/i);
-  assert.match(text, /event: meta/);
-  assert.match(text, /event: delta/);
-  assert.match(text, /event: done/);
-  assert.match(text, /Demo mode is active/);
+  const result = await response.json();
+  assert.equal(response.status, 503);
+  assert.equal(result.success, false);
+  assert.equal(result.needsProvider, true);
+  assert.match(result.error, /Connect AI/i);
+  assert.doesNotMatch(JSON.stringify(result), /event: delta|Demo mode is active/);
   assert.equal((await (await fetch(base + '/api/history')).json()).total, 0);
 });
 
@@ -257,6 +259,69 @@ test('unknown API routes return structured JSON errors', async (t) => {
   const response = await fetch(base + '/api/not-a-route');
   assert.equal(response.status, 404);
   assert.equal((await response.json()).success, false);
+});
+
+
+test('BYOK credentials select a whitelisted provider for real streaming without exposing the key', async (t) => {
+  const calls = [];
+  const fakeAI = { chat: { completions: { create: async (request) => {
+    calls.push(request);
+    return (async function* () {
+      yield { choices: [{ delta: { content: 'This came ' } }] };
+      yield { choices: [{ delta: { content: 'from the live test client.' } }] };
+    })();
+  } } } };
+  const factoryCalls = [];
+  const base = await makeServer(t, {
+    providerClientFactory: (provider, apiKey) => { factoryCalls.push({ provider, apiKey }); return fakeAI; }
+  });
+  const secret = 'unit-test-provider-secret';
+  const response = await jsonPost(base + '/api/ai/stream', {
+    mode: 'code', tone: 'deep', prompt: 'Create a tested API'
+  }, { 'X-NodeAI-Api-Key': secret, 'X-NodeAI-Provider': 'gemini', 'X-NodeAI-Model': 'gemini-3.8-flash' });
+  const text = await response.text();
+  assert.equal(response.status, 200);
+  assert.match(text, /event: meta/);
+  assert.match(text, /"provider":"gemini"/);
+  assert.match(text, /This came from the live test client/);
+  assert.match(text, /event: done/);
+  assert.equal(calls[0].stream, true);
+  assert.equal(calls[0].model, 'gemini-3.8-flash');
+  assert.equal(factoryCalls[0].provider, 'gemini');
+  assert.equal(factoryCalls[0].apiKey, secret);
+  assert.equal(text.includes(secret), false);
+});
+
+test('provider test performs a short real completion and never returns the key', async (t) => {
+  let calls = 0;
+  const fakeAI = { chat: { completions: { create: async () => {
+    calls++;
+    return { choices: [{ message: { content: 'NODEAI_READY' } }] };
+  } } } };
+  const base = await makeServer(t, { providerClientFactory: () => fakeAI });
+  const headers = { 'X-NodeAI-Api-Key': 'provider-key-for-tests', 'X-NodeAI-Provider': 'groq', 'X-NodeAI-Model': 'openai/gpt-oss-20b' };
+  const response = await jsonPost(base + '/api/providers/test', {}, headers);
+  const body = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(body.success, true);
+  assert.equal(body.provider, 'groq');
+  assert.equal(body.model, 'openai/gpt-oss-20b');
+  assert.equal(calls, 1);
+  assert.equal(JSON.stringify(body).includes('provider-key-for-tests'), false);
+  assert.equal((await jsonPost(base + '/api/providers/test', {})).status, 400);
+});
+
+test('invalid BYOK provider and model identifiers are rejected before provider calls', async (t) => {
+  let calls = 0;
+  const base = await makeServer(t, { providerClientFactory: () => { calls++; throw new Error('must not run'); } });
+  const key = { 'X-NodeAI-Api-Key': 'provider-key-for-tests' };
+  assert.equal((await jsonPost(base + '/api/ai', { prompt: 'hello' }, {
+    ...key, 'X-NodeAI-Provider': 'not-a-provider', 'X-NodeAI-Model': 'model'
+  })).status, 400);
+  assert.equal((await jsonPost(base + '/api/ai', { prompt: 'hello' }, {
+    ...key, 'X-NodeAI-Provider': 'gemini', 'X-NodeAI-Model': 'bad model with spaces'
+  })).status, 400);
+  assert.equal(calls, 0);
 });
 
 test('dependency lockfile uses patched proxy-addr release', () => {
