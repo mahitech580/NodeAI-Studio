@@ -1,7 +1,12 @@
 'use strict';
 
 const $ = (selector, root = document) => root.querySelector(selector);
-const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
+const $ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
+
+const API_BASE_URL = String(window.NODEAI_CONFIG?.apiBaseUrl || '').trim().replace(/\\/+$/, '');
+function apiUrl(path) {
+  return API_BASE_URL ? API_BASE_URL + path : path;
+}
 
 const elements = {
   modeButtons: $$('.mode-button'),
@@ -420,7 +425,7 @@ function restoreSession(item) {
 
 async function loadHistory() {
   try {
-    const response = await fetch('/api/history?limit=50', { headers: { Accept: 'application/json' } });
+    const response = await fetch(apiUrl('/api/history?limit=50'), { headers: { Accept: 'application/json' } });
     if (!response.ok) throw new Error('History is unavailable');
     const data = await response.json();
     historyCache = Array.isArray(data.history) ? data.history : [];
@@ -437,7 +442,7 @@ async function loadHistory() {
 
 async function checkServer() {
   try {
-    const response = await fetch('/api/health', { headers: { Accept: 'application/json' } });
+    const response = await fetch(apiUrl('/api/health'), { headers: { Accept: 'application/json' } });
     if (!response.ok) throw new Error('Server unavailable');
     const data = await response.json();
     if (!data.success) throw new Error('Server unavailable');
@@ -453,7 +458,7 @@ async function checkServer() {
 
 async function fetchConfig() {
   try {
-    const response = await fetch('/api/config');
+    const response = await fetch(apiUrl('/api/config'));
     if (!response.ok) return;
     const config = await response.json();
     if (config.success && Number.isFinite(config.maxPromptLength)) {
@@ -488,7 +493,7 @@ async function generateResponse() {
     requestController = new AbortController();
     elements.stopGeneration.hidden = false;
     const context = currentMode === 'chat' ? conversationTurns.slice(-8) : [];
-    const response = await fetch('/api/ai', {
+    const response = await fetch(apiUrl('/api/ai'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
       body: JSON.stringify({ mode: currentMode, prompt, context }),
@@ -646,7 +651,7 @@ async function clearHistory() {
   }
   if (!window.confirm('Clear all saved NodeAI Studio sessions from this server? This cannot be undone.')) return;
   try {
-    const response = await fetch('/api/history', { method: 'DELETE' });
+    const response = await fetch(apiUrl('/api/history'), { method: 'DELETE' });
     const data = await response.json();
     if (!response.ok || !data.success) throw new Error(data.error || 'Could not clear history');
     historyCache = [];

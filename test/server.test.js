@@ -240,4 +240,13 @@ test('workspace exposes a reusable saved-prompt library', async (t) => {
   assert.match(html, /id="savedPromptCount"/);
   assert.match(html, /id="savedPrompts"/);
 });
+test('API base configuration is shipped with the static workspace', async (t) => {
+  const base = await makeServer(t);
+  const response = await fetch(base + '/config.js');
+  const source = await response.text();
 
+  assert.equal(response.status, 200);
+  assert.match(source, /NODEAI_CONFIG/);
+  assert.match(source, /apiBaseUrl/);
+  assert.match(source, /https:/);
+});
