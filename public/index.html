@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#0a0b12">
-  <meta name="description" content="NodeAI Studio is a focused AI workspace for coding, debugging, SQL, and developer questions.">
+  <meta name="theme-color" content="#090a11">
+  <meta name="description" content="NodeAI Studio is a focused AI workspace for coding, debugging, SQL, and engineering conversations.">
   <title>NodeAI Studio — AI Developer Workspace</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -17,65 +17,33 @@
   <a class="skip-link" href="#main">Skip to workspace</a>
   <div class="ambient ambient-one" aria-hidden="true"></div>
   <div class="ambient ambient-two" aria-hidden="true"></div>
-
   <div class="app-shell">
     <aside class="sidebar" aria-label="Workspace navigation">
-      <a class="brand" href="/" aria-label="NodeAI Studio home">
+      <a class="brand" href="./" aria-label="NodeAI Studio home">
         <span class="brand-mark">N<span>.</span></span>
-        <span class="brand-copy">
-          <strong>NodeAI <span>Studio</span></strong>
-          <small>DEVELOPER WORKSPACE</small>
-        </span>
+        <span class="brand-copy"><strong>NodeAI <span>Studio</span></strong><small>DEVELOPER WORKSPACE</small></span>
       </a>
-
-      <button class="new-session" id="newSession" type="button">
-        <span class="new-session-plus" aria-hidden="true">+</span>
-        <span>New workspace</span>
-        <kbd>NEW</kbd>
-      </button>
-
+      <button class="new-session" id="newSession" type="button"><span class="new-session-plus" aria-hidden="true">+</span><span>New workspace</span><kbd>⌘ K</kbd></button>
       <div class="nav-label">WORKFLOWS <span>04</span></div>
       <nav class="mode-nav" aria-label="AI workflows">
-        <button class="mode-button active" type="button" data-mode="chat" aria-pressed="true">
-          <span class="mode-icon icon-chat" aria-hidden="true">✳</span><span>AI Chat</span><span class="mode-arrow">↗</span>
-        </button>
-        <button class="mode-button" type="button" data-mode="code" aria-pressed="false">
-          <span class="mode-icon icon-code" aria-hidden="true">⌘</span><span>Code Generator</span><span class="mode-arrow">↗</span>
-        </button>
-        <button class="mode-button" type="button" data-mode="debug" aria-pressed="false">
-          <span class="mode-icon icon-debug" aria-hidden="true">⌁</span><span>AI Debugger</span><span class="mode-arrow">↗</span>
-        </button>
-        <button class="mode-button" type="button" data-mode="sql" aria-pressed="false">
-          <span class="mode-icon icon-sql" aria-hidden="true">▤</span><span>SQL Assistant</span><span class="mode-arrow">↗</span>
-        </button>
+        <button class="mode-button active" type="button" data-mode="chat" aria-pressed="true"><span class="mode-icon icon-chat" aria-hidden="true">✳</span><span>AI Chat</span><span class="mode-arrow">↗</span></button>
+        <button class="mode-button" type="button" data-mode="code" aria-pressed="false"><span class="mode-icon icon-code" aria-hidden="true">⌘</span><span>Code Generator</span><span class="mode-arrow">↗</span></button>
+        <button class="mode-button" type="button" data-mode="debug" aria-pressed="false"><span class="mode-icon icon-debug" aria-hidden="true">⌁</span><span>AI Debugger</span><span class="mode-arrow">↗</span></button>
+        <button class="mode-button" type="button" data-mode="sql" aria-pressed="false"><span class="mode-icon icon-sql" aria-hidden="true">▤</span><span>SQL Assistant</span><span class="mode-arrow">↗</span></button>
       </nav>
-
       <section class="history-section" aria-labelledby="historyHeading">
-        <div class="history-heading">
-          <h2 id="historyHeading">Recent sessions</h2>
-          <span id="historyCount" class="count-pill">0</span>
-        </div>
-        <label class="history-search">
-          <span aria-hidden="true">⌕</span>
-          <input id="historySearch" type="search" placeholder="Find a session…" autocomplete="off" aria-label="Search recent sessions">
-          <kbd>/</kbd>
-        </label>
-        <div id="history" class="history-list" aria-live="polite">
-          <div class="history-empty"><span class="history-empty-mark">◌</span><span>Your sessions will appear here.</span></div>
-        </div>
+        <div class="history-heading"><h2 id="historyHeading">Recent sessions</h2><span id="historyCount" class="count-pill">0</span></div>
+        <label class="history-search"><span aria-hidden="true">⌕</span><input id="historySearch" type="search" placeholder="Find a session…" autocomplete="off" aria-label="Search recent sessions"><kbd>/</kbd></label>
+        <div id="history" class="history-list" aria-live="polite"><div class="history-empty"><span class="history-empty-mark">◌</span><span>Your sessions will appear here.</span></div></div>
         <button id="clearHistory" class="clear-history" type="button">Clear conversation history</button>
       </section>
-
-<details class="saved-prompt-section">
+      <details class="saved-prompt-section">
         <summary><span>Saved prompts</span><span id="savedPromptCount" class="count-pill">0</span></summary>
-        <div id="savedPrompts" class="saved-prompt-list">
-          <div class="saved-prompts-empty">Save a useful prompt to reuse it later.</div>
-        </div>
+        <div id="savedPrompts" class="saved-prompt-list"><div class="saved-prompts-empty">Save a useful prompt to reuse it later.</div></div>
       </details>
-
-            <div class="sidebar-bottom">
+      <div class="sidebar-bottom">
         <div class="privacy-note"><span class="privacy-dot"></span><span>Private by default</span></div>
-        <div class="sidebar-footer"><span class="footer-mark">N.</span><span>Built for the next idea.</span><span class="version">v2.0</span></div>
+        <div class="sidebar-footer"><span class="footer-mark">N.</span><span>Built for the next idea.</span><span class="version">v2.1</span></div>
       </div>
     </aside>
 
@@ -83,7 +51,7 @@
       <header class="topbar">
         <div class="breadcrumbs"><span>Workspace</span><span class="crumb-divider">/</span><strong id="breadcrumbMode">AI Chat</strong></div>
         <div class="topbar-actions">
-          <span class="server-status" id="status"><span class="status-dot"></span><span id="statusText">Connecting…</span></span>
+          <span class="server-status checking" id="status"><span class="status-dot"></span><span id="statusText">Connecting…</span></span>
           <button id="themeToggle" class="icon-button" type="button" aria-label="Switch to light theme" title="Toggle theme"><span id="themeIcon" aria-hidden="true">☼</span></button>
           <button id="exportAnswer" class="export-button" type="button" disabled><span aria-hidden="true">⇩</span> Export</button>
         </div>
@@ -94,38 +62,22 @@
           <div class="hero-copy">
             <div class="eyebrow"><span class="eyebrow-spark">✳</span> YOUR AI-POWERED WORKBENCH <span class="eyebrow-line"></span></div>
             <h1>Think clearly.<br><span>Build brilliantly.</span></h1>
-            <p>From first sketch to final fix, make your next move with an AI partner built for developers.</p>
-            <div class="hero-trust"><span class="trust-check">✓</span> Four focused workflows <span class="trust-separator">·</span> One creative workspace</div>
+            <p>From first sketch to final fix, turn a rough idea into a considered next step with a workspace built for developers.</p>
+            <div class="hero-trust"><span class="trust-check">✓</span> Four focused workflows <span class="trust-separator">·</span> Streaming output <span class="trust-separator">·</span> Reusable prompts</div>
           </div>
           <div class="hero-art" aria-hidden="true">
-            <div class="art-orbit orbit-outer"></div>
-            <div class="art-orbit orbit-inner"></div>
+            <div class="art-orbit orbit-outer"></div><div class="art-orbit orbit-inner"></div>
             <div class="art-core"><span>N</span><i></i></div>
-            <span class="art-node node-one">{"{ }"}</span>
-            <span class="art-node node-two">AI</span>
-            <span class="art-node node-three">⌘</span>
-            <span class="art-node node-four">✳</span>
+            <span class="art-node node-one">{ }</span><span class="art-node node-two">AI</span><span class="art-node node-three">⌘</span><span class="art-node node-four">✳</span>
             <div class="art-spark spark-one"></div><div class="art-spark spark-two"></div>
           </div>
           <div class="hero-index"><span>01</span><span class="hero-index-line"></span><span>IDEAS IN MOTION</span></div>
         </section>
 
         <section class="metrics" aria-label="Workspace overview">
-          <article class="metric-card">
-            <span class="metric-icon violet" aria-hidden="true">✳</span>
-            <div><span class="metric-label">WORKFLOWS</span><strong>04</strong><small>Made for dev tasks</small></div>
-            <span class="metric-sparkline spark-violet" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
-          </article>
-          <article class="metric-card">
-            <span class="metric-icon cyan" aria-hidden="true">⌁</span>
-            <div><span class="metric-label">SESSIONS SAVED</span><strong id="sessionMetric">—</strong><small>Stored on this server</small></div>
-            <span class="metric-sparkline spark-cyan" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
-          </article>
-          <article class="metric-card">
-            <span class="metric-icon pink" aria-hidden="true">↗</span>
-            <div><span class="metric-label">LAST RESPONSE</span><strong id="latencyMetric">—</strong><small id="latencyCaption">Ready for a prompt</small></div>
-            <span class="metric-pulse" aria-hidden="true"><i></i><i></i><i></i></span>
-          </article>
+          <article class="metric-card"><span class="metric-icon violet" aria-hidden="true">✳</span><div><span class="metric-label">WORKFLOWS</span><strong>04</strong><small>Focused dev tools</small></div><span class="metric-sparkline spark-violet" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span></article>
+          <article class="metric-card"><span class="metric-icon cyan" aria-hidden="true">⌁</span><div><span class="metric-label">SESSIONS SAVED</span><strong id="sessionMetric">—</strong><small>Stored on this server</small></div><span class="metric-sparkline spark-cyan" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span></article>
+          <article class="metric-card"><span class="metric-icon pink" aria-hidden="true">↗</span><div><span class="metric-label">LAST RESPONSE</span><strong id="latencyMetric">—</strong><small id="latencyCaption">Ready for a prompt</small></div><span class="metric-pulse" aria-hidden="true"><i></i><i></i><i></i></span></article>
         </section>
 
         <section class="workbench" aria-label="AI workbench">
@@ -134,30 +86,26 @@
             <div class="prompt-editor">
               <label class="sr-only" for="prompt">Describe what you want help with</label>
               <textarea id="prompt" maxlength="12000" placeholder="What are you working on today?"></textarea>
-              <div class="editor-bottom"><span><span class="keyboard-symbol">↵</span> <kbd>Ctrl</kbd> + <kbd>Enter</kbd> to generate</span><button id="savePrompt" class="save-prompt-inline" type="button" title="Save this prompt in this browser">☆ Save prompt</button><span id="charCount">0 / 12,000</span></div>
+              <div class="editor-bottom"><span><span class="keyboard-symbol">↵</span> <kbd>Ctrl</kbd> + <kbd>Enter</kbd> to generate</span><button id="savePrompt" class="save-prompt-inline" type="button" title="Save this prompt in this browser">☆ Save</button><span id="charCount">0 / 12,000</span></div>
+            </div>
+            <div class="control-strip">
+              <label class="tone-control"><span>RESPONSE STYLE</span><select id="toneSelect" aria-label="Response style"><option value="balanced">Balanced</option><option value="concise">Concise</option><option value="deep">Deep dive</option></select></label>
+              <label class="attachment-control" for="promptFile"><span aria-hidden="true">↥</span> Attach text/code<input id="promptFile" type="file" accept=".txt,.md,.js,.jsx,.ts,.tsx,.json,.py,.sql,.html,.css,.yml,.yaml,.log,.mdx" aria-label="Attach a text or source code file"></label>
+              <span id="attachmentHint" class="attachment-hint">64 KB max</span>
             </div>
             <div class="prompt-suggestions"><span class="suggestion-label">TRY A STARTER</span><div id="promptChips" class="prompt-chips">
               <button class="prompt-chip" type="button" data-mode="chat" data-prompt="Explain the JavaScript event loop with a practical example.">Explain the event loop <span>↗</span></button>
               <button class="prompt-chip" type="button" data-mode="chat" data-prompt="Review this function for readability, edge cases, and performance:">Review a function <span>↗</span></button>
             </div></div>
-            <div class="composer-actions"><button id="clearPrompt" class="button-quiet" type="button">Clear prompt</button><button id="attachFile" class="button-quiet attach-file" type="button"><span aria-hidden="true">↥</span> Attach text</button><input id="promptFile" class="sr-only" type="file" accept=".txt,.md,.js,.jsx,.ts,.tsx,.json,.py,.sql,.html,.css,.yml,.yaml,.log" tabindex="-1" aria-label="Choose a text or source-code file"><button id="stopGeneration" class="button-quiet stop-generation" type="button" hidden>Stop request</button><button id="generate" class="generate-button" type="button"><span class="generate-icon" aria-hidden="true">✳</span><span id="generateLabel">Generate response</span><span class="generate-arrow" aria-hidden="true">↗</span></button></div>
-            <div class="composer-footnote"><span class="lock-icon" aria-hidden="true">⌑</span><span>Text file contents are added to the prompt and sent to your server. Avoid secrets.</span></div>
+            <div class="composer-actions"><button id="clearPrompt" class="button-quiet" type="button">Clear prompt</button><button id="stopGeneration" class="button-quiet stop-generation" type="button" hidden>Stop generation</button><button id="generate" class="generate-button" type="button"><span class="generate-icon" aria-hidden="true">✳</span><span id="generateLabel">Generate response</span><span class="generate-arrow" aria-hidden="true">↗</span></button></div>
+            <div class="composer-footnote"><span class="lock-icon" aria-hidden="true">⌑</span><span>Text attachments are inserted into the prompt. Never include passwords or API keys.</span></div>
           </article>
 
           <article class="panel response-panel">
             <div class="panel-topline response-topline"><div class="panel-heading"><span class="panel-step step-cyan">02</span><div><h2>Studio output</h2><p>Your ideas, brought into focus.</p></div></div><div class="response-actions"><button id="copyAnswer" class="small-action" type="button" disabled><span aria-hidden="true">▢</span> Copy</button></div></div>
             <div id="responseBody" class="response-body">
-              <div id="emptyResponse" class="response-empty">
-                <div class="empty-illustration"><div class="empty-illustration-ring ring-a"></div><div class="empty-illustration-ring ring-b"></div><div class="empty-illustration-core">✳</div><span class="empty-star star-a">✦</span><span class="empty-star star-b">·</span></div>
-                <h3>A clean slate.</h3>
-                <p>Your next breakthrough begins with a good question. Write a prompt and let’s work through it.</p>
-                <span class="empty-tip"><span aria-hidden="true">↳</span> Start with a suggested prompt</span>
-              </div>
-              <div id="responseResult" class="response-result" hidden>
-                <div class="result-meta"><span id="resultType" class="result-type"><span class="result-type-dot"></span> MODEL RESPONSE</span><span id="resultTime"></span></div>
-                <pre id="answerText" tabindex="0"></pre>
-                <div class="result-footer"><span id="resultModel">Response ready</span><button id="copyAnswerBottom" type="button" class="text-action">Copy output <span aria-hidden="true">↗</span></button></div>
-              </div>
+              <div id="emptyResponse" class="response-empty"><div class="empty-illustration"><div class="empty-illustration-ring ring-a"></div><div class="empty-illustration-ring ring-b"></div><div class="empty-illustration-core">✳</div><span class="empty-star star-a">✦</span><span class="empty-star star-b">·</span></div><h3>A clean slate.</h3><p>Your next breakthrough begins with a good question. Write a prompt and let's work through it.</p><span class="empty-tip"><span aria-hidden="true">↳</span> Start with a suggested prompt</span></div>
+              <div id="responseResult" class="response-result" hidden><div class="result-meta"><span id="resultType" class="result-type"><span class="result-type-dot"></span> MODEL RESPONSE</span><span id="resultTime"></span></div><pre id="answerText" tabindex="0"></pre><div class="result-footer"><span id="resultModel">Response ready</span><button id="copyAnswerBottom" type="button" class="text-action" disabled>Copy output <span aria-hidden="true">↗</span></button></div></div>
             </div>
             <div class="response-bottom"><span class="response-bottom-dot"></span><span id="responseFootnote">Waiting for your first prompt</span><span id="contextIndicator" class="context-indicator" hidden></span><span class="response-bottom-right">NODEAI / OUTPUT</span></div>
           </article>
@@ -171,11 +119,23 @@
             <button class="workflow-card" type="button" data-mode="sql" data-prompt="Write an SQL query to find the top 10 customers by total order revenue. Assume customers(id, name) and orders(id, customer_id, total_amount). Explain the joins and aggregation."><span class="workflow-card-icon sql-card-icon">▤</span><span class="workflow-card-copy"><strong>Query your data</strong><small>Draft, refine, and understand SQL with schema-aware prompts.</small><span class="workflow-link">Open SQL assistant <b>↗</b></span></span><span class="workflow-number">03</span></button>
           </div>
         </section>
-
         <footer class="page-footer"><span><b>N.</b> NODEAI STUDIO</span><span>Crafted for curious minds <i>✳</i></span><a href="https://github.com/mahitech580/NodeAI-Studio" target="_blank" rel="noreferrer">Open source <span aria-hidden="true">↗</span></a></footer>
       </div>
     </main>
   </div>
+  <dialog id="commandDialog" class="command-dialog" aria-labelledby="commandTitle">
+    <div class="command-head"><span class="brand-mark small-mark">N<span>.</span></span><div><h2 id="commandTitle">Quick actions</h2><p>Jump to a workflow or start fresh.</p></div><button id="closeCommand" class="icon-button" type="button" aria-label="Close quick actions">×</button></div>
+    <label class="command-search"><span aria-hidden="true">⌕</span><input id="commandSearch" type="search" placeholder="Search actions…" autocomplete="off"></label>
+    <div id="commandItems" class="command-items">
+      <button type="button" data-command="new"><span>＋</span><span><strong>New workspace</strong><small>Clear prompt and conversation</small></span><kbd>N</kbd></button>
+      <button type="button" data-command="chat"><span>✳</span><span><strong>AI Chat</strong><small>Ask an engineering question</small></span><kbd>1</kbd></button>
+      <button type="button" data-command="code"><span>⌘</span><span><strong>Code Generator</strong><small>Build a solution from an idea</small></span><kbd>2</kbd></button>
+      <button type="button" data-command="debug"><span>⌁</span><span><strong>AI Debugger</strong><small>Investigate an error</small></span><kbd>3</kbd></button>
+      <button type="button" data-command="sql"><span>▤</span><span><strong>SQL Assistant</strong><small>Draft and understand queries</small></span><kbd>4</kbd></button>
+      <button type="button" data-command="theme"><span>☼</span><span><strong>Toggle appearance</strong><small>Switch dark or light theme</small></span><kbd>T</kbd></button>
+    </div>
+    <div class="command-foot"><span>Choose an action</span><span><kbd>ESC</kbd> to close</span></div>
+  </dialog>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 </body>
 </html>
