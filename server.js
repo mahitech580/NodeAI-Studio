@@ -38,11 +38,11 @@ function getSystemPrompt(mode) {
 function demoResponse(mode, prompt) {
   const examples = {
     chat: 'Demo mode is active. Your request reached NodeAI Studio, but no AI provider is configured. Add AI_API_KEY to your environment to enable live model responses.',
-    code: 'Demo mode is active. Configure AI_API_KEY to generate a solution tailored to your request.\\n\\nExample starter:\\n\\nconst express = require("express");\\nconst app = express();\\napp.use(express.json());\\n\\napp.get("/api/health", (req, res) => {\\n  res.json({ success: true });\\n});\\n\\napp.listen(3000);',
-    debug: 'Demo mode is active, so the request was not analyzed by a language model. Configure AI_API_KEY to receive a diagnosis.\\n\\nDebugging checklist:\\n1. Read the complete error and stack trace.\\n2. Reproduce the issue with the smallest input.\\n3. Check types, async boundaries, and environment configuration.\\n4. Add a regression test for the fix.',
-    sql: 'Demo mode is active. Configure AI_API_KEY for a query tailored to your schema.\\n\\nExample query:\\n\\nSELECT customer_id, SUM(revenue) AS total_revenue\\nFROM orders\\nGROUP BY customer_id\\nORDER BY total_revenue DESC\\nLIMIT 10;'
+    code: 'Demo mode is active. Configure AI_API_KEY to generate a solution tailored to your request.\n\nExample starter:\n\nconst express = require("express");\nconst app = express();\napp.use(express.json());\n\napp.get("/api/health", (req, res) => {\n  res.json({ success: true });\n});\n\napp.listen(3000);',
+    debug: 'Demo mode is active, so the request was not analyzed by a language model. Configure AI_API_KEY to receive a diagnosis.\n\nDebugging checklist:\n1. Read the complete error and stack trace.\n2. Reproduce the issue with the smallest input.\n3. Check types, async boundaries, and environment configuration.\n4. Add a regression test for the fix.',
+    sql: 'Demo mode is active. Configure AI_API_KEY for a query tailored to your schema.\n\nExample query:\n\nSELECT customer_id, SUM(revenue) AS total_revenue\nFROM orders\nGROUP BY customer_id\nORDER BY total_revenue DESC\nLIMIT 10;'
   };
-  return (examples[mode] || examples.chat) + '\\n\\nRequest received (' + prompt.length + ' characters).';
+  return (examples[mode] || examples.chat) + '\n\nRequest received (' + prompt.length + ' characters).';
 }
 
 function makeRateLimiter(options = {}) {
@@ -125,7 +125,7 @@ function createApp(options = {}) {
     await fs.mkdir(directory, { recursive: true });
     const tempFile = historyFile + '.' + process.pid + '.' + crypto.randomUUID() + '.tmp';
     try {
-      await fs.writeFile(tempFile, JSON.stringify(entries.slice(0, HISTORY_LIMIT), null, 2) + '\\n', {
+      await fs.writeFile(tempFile, JSON.stringify(entries.slice(0, HISTORY_LIMIT), null, 2) + '\n', {
         encoding: 'utf8',
         mode: 0o600
       });
