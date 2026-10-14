@@ -1,6 +1,6 @@
 # NodeAI Studio
 
-A responsive developer workspace for AI-assisted engineering questions, code generation, debugging, and SQL. Version 2.3.0 adds actual provider-backed token streaming, a tested provider connection panel, and browser-supplied credentials. When no provider is connected, generation returns an explicit setup error instead of fabricated sample output.
+A responsive developer workspace for AI-assisted engineering questions, code generation, debugging, and SQL. Version 2.3.1 adds provider-backed model discovery to the real-time streaming workflow, alongside the tested provider connection panel and browser-supplied credentials. When no provider is connected, generation returns an explicit setup error instead of fabricated sample output.
 
 **Stack:** Node.js 22+, Express 5, OpenAI-compatible SDK clients, vanilla HTML/CSS/JavaScript, Node's native test runner.
 
@@ -17,7 +17,7 @@ A responsive developer workspace for AI-assisted engineering questions, code gen
 - **Export/copy:** copy the answer or save a Markdown report containing the prompt and response.
 - **Quick actions:** searchable command palette (Ctrl/Cmd + K), generate (Ctrl/Cmd + Enter), and history search (/).
 - **Responsive design:** reduced-motion support, dark/light themes, mobile workflow navigation, and visible keyboard focus.
-- **Provider connections:** connect OpenAI, Google Gemini, Groq, or OpenRouter through OpenAI-compatible endpoints; test a real completion before using a model.
+- **Provider connections:** connect OpenAI, Google Gemini, Groq, or OpenRouter through OpenAI-compatible endpoints; test a real completion before using a model. Fetch model IDs available to your key and choose one from suggestions, or enter a supported model ID manually.
 - **BYOK credentials:** a key can stay in page memory or, by explicit opt-in, `sessionStorage` until the tab closes. The browser sends it to the NodeAI API over HTTPS in a request header; the backend proxies it and does not persist it in app storage or return it. Only use keys you control and review provider billing/usage.
 - **No fabricated success:** if neither a server provider nor a browser key is configured, generation returns HTTP 503 with a clear connect-provider message.
 - **Safer defaults:** server-side environment credentials, Helmet security headers, request and prompt limits, API throttling, validated context, browser-local history, and consistent JSON errors.
@@ -62,7 +62,7 @@ The Render service can use a key stored in its private Environment settings (`AI
 | --- | --- | --- |
 | GET | /api/health | Service health, demo/live state, configured model name, version, and uptime. |
 | GET | /api/config | Supported modes, response styles, prompt/context limits, and streaming capability. |\n| GET | /api/ready | Service readiness; does not depend on server-side history storage. |
-| POST | /api/providers/test | Sends a small provider request to verify the connection. |\n| POST | /api/ai | Non-streaming generation for API clients. |
+| POST | /api/providers/test | Sends a small provider request to verify the connection. |\n| POST | /api/providers/models | Lists model IDs visible to the selected provider key; returns IDs only. |\n| POST | /api/ai | Non-streaming generation for API clients. |
 | POST | /api/ai/stream | Server-sent event stream: meta, delta, done, or error. |
 | GET | /api/history | Compatibility endpoint returning an empty list; sessions stay in the browser. |
 | DELETE | /api/history | Compatibility endpoint; the server stores no conversation history. |
