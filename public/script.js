@@ -9,6 +9,8 @@ const elements = {
   charCount: $('#charCount'),
   promptChips: $('#promptChips'),
   generate: $('#generate'),
+  stopGeneration: $('#stopGeneration'),
+  contextIndicator: $('#contextIndicator'),
   generateLabel: $('#generateLabel'),
   clearPrompt: $('#clearPrompt'),
   newSession: $('#newSession'),
@@ -90,6 +92,8 @@ let historyCache = [];
 let serverConfig = { maxPromptLength: 12000 };
 let toastTimer = null;
 let busy = false;
+let requestController = null;
+let conversationTurns = [];
 
 function safelyReadStorage(key, fallback) {
   try {
@@ -202,9 +206,36 @@ function showResponse(answer, metadata = {}) {
   elements.responseFootnote.textContent = metadata.demoMode
     ? 'Demo output · configure an API key for live model responses'
     : 'Response received · review before using in production';
+  updateContextIndicator();
   elements.copyAnswer.disabled = !currentAnswer;
   elements.copyAnswerBottom.disabled = !currentAnswer;
   elements.exportAnswer.disabled = !currentAnswer;
+}
+
+function trimConversation() {
+  const maxMessages = 8;
+  const maxCharacters = 14000;
+  conversationTurns = conversationTurns.slice(-maxMessages);
+  let characters = conversationTurns.reduce((sum, turn) => sum + turn.content.length, 0);
+  while (conversationTurns.length > 1 && characters > maxCharacters) {
+    characters -= conversationTurns[0].content.length;
+    conversationTurns.shift();
+  }
+}
+
+function addConversationTurn(role, content) {
+  conversationTurns.push({ role, content: String(content || '') });
+  trimConversation();
+  updateContextIndicator();
+}
+
+function updateContextIndicator() {
+  const active = currentMode === 'chat' && conversationTurns.length > 0;
+  elements.contextIndicator.hidden = !active;
+  elements.contextIndicator.textContent = active ? 'CHAT CONTEXT · ' + conversationTurns.length : '';
+  elements.contextIndicator.title = active
+    ? 'The last ' + conversationTurns.length + ' messages will be included in your next chat request.'
+    : '';
 }
 
 function formatDuration(duration) {
@@ -273,6 +304,11 @@ function formatDate(value) {
 
 function restoreSession(item) {
   updateMode(item.mode || 'chat');
+  conversationTurns = [];
+  if ((item.mode || 'chat') === 'chat') {
+    addConversationTurn('user', item.prompt || '');
+    addConversationTurn('assistant', item.answer || '');
+  }
   elements.prompt.value = item.prompt || '';
   updatePromptCount();
   showResponse(item.answer || '', {
@@ -353,10 +389,14 @@ async function generateResponse() {
   elements.responseBody.classList.add('is-working');
 
   try {
+    requestController = new AbortController();
+    elements.stopGeneration.hidden = false;
+    const context = currentMode === 'chat' ? conversationTurns.slice(-8) : [];
     const response = await fetch('/api/ai', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-      body: JSON.stringify({ mode: currentMode, prompt })
+      body: JSON.stringify({ mode: currentMode, prompt, context }),
+      signal: requestController.signal
     });
     const data = await response.json().catch(() => ({}));
     if (!response.ok || !data.success) {
@@ -364,29 +404,44 @@ async function generateResponse() {
     }
 
     showResponse(data.answer, data);
+    if (currentMode === 'chat') {
+      addConversationTurn('user', prompt);
+      addConversationTurn('assistant', data.answer);
+      elements.responseFootnote.textContent = 'Chat context saved for this workspace · ' + conversationTurns.length + ' messages';
+    }
     elements.latencyMetric.textContent = formatDuration(data.durationMs) || '—';
     elements.latencyCaption.textContent = data.demoMode ? 'Demo response' : 'Last request duration';
     await loadHistory();
     setServerStatus(data.demoMode ? 'demo' : 'online', data.demoMode ? 'Demo mode' : 'AI connected');
     showToast(data.demoMode ? 'Demo response ready' : 'Response generated');
   } catch (error) {
-    showResponse('Request failed\n\n' + error.message + '\n\nCheck the server status and try again.', { demoMode: true });
-    elements.resultType.textContent = 'REQUEST ERROR';
-    elements.resultType.classList.add('error-result');
-    elements.resultModel.textContent = 'No response was generated';
-    elements.responseFootnote.textContent = 'Request failed · review the message above';
-    showToast(error.message || 'Request failed', 'error');
+    if (error.name === 'AbortError') {
+      showToast('Request cancelled', 'warning');
+      elements.responseFootnote.textContent = 'Request cancelled · your previous output is preserved';
+    } else {
+      showResponse('Request failed\n\n' + error.message + '\n\nCheck the server status and try again.', { demoMode: true });
+      elements.resultType.textContent = 'REQUEST ERROR';
+      elements.resultType.classList.add('error-result');
+      elements.resultModel.textContent = 'No response was generated';
+      elements.responseFootnote.textContent = 'Request failed · review the message above';
+      showToast(error.message || 'Request failed', 'error');
+    }
   } finally {
     busy = false;
+    requestController = null;
+    elements.stopGeneration.hidden = true;
     elements.generate.disabled = false;
     elements.generate.classList.remove('is-loading');
     elements.generateLabel.textContent = 'Generate response';
     elements.responseBody.classList.remove('is-working');
   }
 }
+}
 
 function newSession() {
   elements.prompt.value = '';
+  conversationTurns = [];
+  updateContextIndicator();
   updatePromptCount();
   showEmptyResponse();
   elements.latencyMetric.textContent = '—';
@@ -462,6 +517,9 @@ async function clearHistory() {
 elements.modeButtons.forEach((button) => button.addEventListener('click', () => updateMode(button.dataset.mode)));
 elements.prompt.addEventListener('input', updatePromptCount);
 elements.generate.addEventListener('click', generateResponse);
+elements.stopGeneration.addEventListener('click', () => {
+  if (requestController) requestController.abort();
+});
 elements.clearPrompt.addEventListener('click', () => {
   elements.prompt.value = '';
   updatePromptCount();
@@ -502,6 +560,7 @@ document.addEventListener('keydown', (event) => {
 
 setTheme(safelyReadStorage('nodeai-theme', 'dark'));
 updateMode('chat');
+updateContextIndicator();
 showEmptyResponse();
 fetchConfig();
 loadHistory();

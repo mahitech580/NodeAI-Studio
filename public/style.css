@@ -317,3 +317,18 @@ html[data-theme="light"] .art-core { background: linear-gradient(140deg, rgba(13
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
+
+
+/* Chat context and safe cancellation controls */
+.context-indicator {
+  margin-left: auto;
+  color: var(--cyan);
+  font: 8px var(--mono);
+  letter-spacing: .35px;
+  white-space: nowrap;
+}
+.stop-generation { color: var(--pink); }
+.stop-generation:hover { color: var(--text); }
+@media (max-width: 390px) {
+  .context-indicator { display: none; }
+}

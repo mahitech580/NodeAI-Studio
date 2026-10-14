@@ -132,7 +132,7 @@
               <button class="prompt-chip" type="button" data-mode="chat" data-prompt="Explain the JavaScript event loop with a practical example.">Explain the event loop <span>↗</span></button>
               <button class="prompt-chip" type="button" data-mode="chat" data-prompt="Review this function for readability, edge cases, and performance:">Review a function <span>↗</span></button>
             </div></div>
-            <div class="composer-actions"><button id="clearPrompt" class="button-quiet" type="button">Clear prompt</button><button id="generate" class="generate-button" type="button"><span class="generate-icon" aria-hidden="true">✳</span><span id="generateLabel">Generate response</span><span class="generate-arrow" aria-hidden="true">↗</span></button></div>
+            <div class="composer-actions"><button id="clearPrompt" class="button-quiet" type="button">Clear prompt</button><button id="stopGeneration" class="button-quiet stop-generation" type="button" hidden>Stop request</button><button id="generate" class="generate-button" type="button"><span class="generate-icon" aria-hidden="true">✳</span><span id="generateLabel">Generate response</span><span class="generate-arrow" aria-hidden="true">↗</span></button></div>
             <div class="composer-footnote"><span class="lock-icon" aria-hidden="true">⌑</span><span>Prompts are sent to your configured server. Avoid entering secrets.</span></div>
           </article>
 
@@ -151,7 +151,7 @@
                 <div class="result-footer"><span id="resultModel">Response ready</span><button id="copyAnswerBottom" type="button" class="text-action">Copy output <span aria-hidden="true">↗</span></button></div>
               </div>
             </div>
-            <div class="response-bottom"><span class="response-bottom-dot"></span><span id="responseFootnote">Waiting for your first prompt</span><span class="response-bottom-right">NODEAI / OUTPUT</span></div>
+            <div class="response-bottom"><span class="response-bottom-dot"></span><span id="responseFootnote">Waiting for your first prompt</span><span id="contextIndicator" class="context-indicator" hidden></span><span class="response-bottom-right">NODEAI / OUTPUT</span></div>
           </article>
         </section>
 
