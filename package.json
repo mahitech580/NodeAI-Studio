@@ -1,7 +1,7 @@
 {
   "name": "nodeai-studio",
-  "version": "2.2.0",
-  "description": "An advanced streaming AI workspace with separate chat, code, debugging, and SQL workspaces.",
+  "version": "2.3.0",
+  "description": "A real-time AI developer workspace with provider connections, streamed code generation, debugging, SQL, and chat.",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
