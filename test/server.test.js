@@ -147,7 +147,7 @@ test('history compatibility endpoint never exposes prompt data and validates mod
   assert.match((await cleared.json()).message, /no server-side conversation history/i);
 });
 
-test('configured GitHub Pages and Render origins can call the API', async (t) => {
+test('configured origins have CORS access while disconnected generation fails honestly', async (t) => {
   const origins = [
     'https://mahitech580.github.io',
     'https://nodeai-studio-api-mahitech580.onrender.com'
@@ -159,12 +159,12 @@ test('configured GitHub Pages and Render origins can call the API', async (t) =>
     assert.equal(health.headers.get('access-control-allow-origin'), origin);
     const response = await fetch(base + '/api/ai/stream', {
       method: 'POST',
-      headers: { Origin: origin, 'Content-Type': 'application/json', Accept: 'text/event-stream' },
+      headers: { Origin: origin, 'Content-Type': 'application/json', Accept: 'application/json' },
       body: JSON.stringify({ mode: 'chat', prompt: 'CORS smoke test' })
     });
-    assert.equal(response.status, 200);
+    assert.equal(response.status, 503);
     assert.equal(response.headers.get('access-control-allow-origin'), origin);
-    assert.match(await response.text(), /event: done/);
+    assert.equal((await response.json()).needsProvider, true);
   }
 });
 
@@ -208,7 +208,11 @@ test('static workspace contains advanced controls and serves source assets', asy
   const response = await fetch(base + '/');
   const html = await response.text();
   assert.equal(response.status, 200);
-  for (const selector of ['id="toneSelect"', 'id="stopGeneration"', 'id="commandDialog"', 'id="savedPrompts"', 'History stays in this browser']) {
+  for (const selector of [
+    'id="toneSelect"', 'id="stopGeneration"', 'id="commandDialog"', 'id="savedPrompts"',
+    'id="providerDialog"', 'id="providerSelect"', 'id="providerApiKey"', 'id="testConnect"',
+    'id="providerSettings"', 'History stays in this browser'
+  ]) {
     assert.ok(html.includes(selector), selector);
   }
   for (const asset of ['/script.js', '/style.css', '/config.js']) {
@@ -217,12 +221,20 @@ test('static workspace contains advanced controls and serves source assets', asy
   const script = await (await fetch(base + '/script.js')).text();
   assert.match(script, /nodeai-session-history/);
   assert.match(script, /recordLocalHistory/);
+  assert.match(script, /providerHeaders\(\)/);
+  assert.match(script, /sessionStorage\.setItem\(PROVIDER_SESSION_KEY/);
+  assert.doesNotMatch(script, /localStorage\.setItem\(PROVIDER_SESSION_KEY/);
   assert.doesNotMatch(script, /fetch\(apiUrl\('\/api\/history/);
+  const styles = await (await fetch(base + '/style.css')).text();
+  assert.match(styles, /\.provider-dialog/);
+  assert.match(styles, /\.provider-connect-button/);
 });
 
-test('rate limiting returns retry guidance after the request budget is reached', async (t) => {
+test('rate limiting returns retry guidance even when no provider is configured', async (t) => {
   const base = await makeServer(t, { rateLimitMax: 1 });
-  assert.equal((await jsonPost(base + '/api/ai', { mode: 'chat', prompt: 'first' })).status, 200);
+  const first = await jsonPost(base + '/api/ai', { mode: 'chat', prompt: 'first' });
+  assert.equal(first.status, 503);
+  assert.equal((await first.json()).needsProvider, true);
   const limited = await jsonPost(base + '/api/ai', { mode: 'chat', prompt: 'second' });
   assert.equal(limited.status, 429);
   assert.match(limited.headers.get('retry-after') || '', /^\d+$/);
@@ -326,5 +338,5 @@ test('invalid BYOK provider and model identifiers are rejected before provider c
 
 test('dependency lockfile uses patched proxy-addr release', () => {
   assert.equal(packageLock.packages['node_modules/proxy-addr'].version, '2.0.8');
-  assert.equal(packageLock.packages[''].version, '2.2.0');
+  assert.equal(packageLock.packages[''].version, '2.3.0');
 });
