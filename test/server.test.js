@@ -1,5 +1,6 @@
 'use strict';
 
+const packageLock = require('../package-lock.json');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { createApp, MAX_PROMPT_LENGTH } = require('../server');
@@ -253,4 +254,9 @@ test('unknown API routes return structured JSON errors', async (t) => {
   const response = await fetch(base + '/api/not-a-route');
   assert.equal(response.status, 404);
   assert.equal((await response.json()).success, false);
+});
+
+test('dependency lockfile uses patched proxy-addr release', () => {
+  assert.equal(packageLock.packages['node_modules/proxy-addr'].version, '2.0.8');
+  assert.equal(packageLock.packages[''].version, '2.2.0');
 });

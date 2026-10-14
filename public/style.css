@@ -636,3 +636,21 @@ html[data-theme="light"] .mode-field textarea { background: rgba(255,255,255,.94
 @media (prefers-reduced-motion: reduce) {
   .mode-settings-card { animation: none; }
 }
+
+
+/* v2.2: make asynchronous and error states readable in both themes. */
+.result-type.live-result { color: var(--green); }
+.result-type.demo-result { color: #e6c47f; }
+.result-type.error-result { color: var(--pink); }
+html[data-theme="light"] .result-type.demo-result { color: #8b650e; }
+html[data-theme="light"] .result-type.error-result { color: #a52b5e; }
+#responseBody[aria-busy="true"] .response-bottom-dot {
+  animation: response-status-pulse 1.2s ease-in-out infinite;
+}
+@keyframes response-status-pulse {
+  0%, 100% { opacity: .45; transform: scale(.85); }
+  50% { opacity: 1; transform: scale(1.2); }
+}
+@media (prefers-reduced-motion: reduce) {
+  #responseBody[aria-busy="true"] .response-bottom-dot { animation: none; }
+}

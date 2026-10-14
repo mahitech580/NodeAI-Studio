@@ -618,6 +618,7 @@ async function generateResponse() {
   elements.stopGeneration.hidden = false;
   elements.responseFootnote.textContent = 'Connecting to the NodeAI streaming endpoint…';
   elements.responseBody.classList.add('is-working');
+  elements.responseBody.setAttribute('aria-busy', 'true');
 
   let receivedAnyText = false;
   let completed = false;
@@ -730,20 +731,29 @@ async function generateResponse() {
         showToast('Generation stopped', 'warning');
       }
     } else {
-      if (error instanceof TypeError) {
-        setServerStatus('offline', 'API unavailable');
-      }
+      const networkFailure = error instanceof TypeError;
+      if (networkFailure) setServerStatus('offline', 'API unavailable');
       if (receivedAnyText) {
-        elements.responseFootnote.textContent = 'Stream interrupted · partial output is shown.';
+        elements.responseFootnote.textContent = 'Stream interrupted · partial output is shown but was not saved.';
+        elements.resultType.className = 'result-type error-result';
         elements.resultType.textContent = 'INTERRUPTED';
       } else {
-        showResponse('Request failed\n\n' + error.message + '\n\nCheck the server status and try again.', { demoMode: true });
+        const message = networkFailure
+          ? (navigator.onLine === false
+            ? 'Your browser appears to be offline. Reconnect and try again.'
+            : 'Could not reach the NodeAI API. A sleeping free Render service may need a moment to wake up; please retry.')
+          : (error.message || 'The request could not be completed.');
+        showResponse('Request failed\n\n' + message + '\n\nCheck the service status and try again.', { demoMode: false });
+        elements.resultType.className = 'result-type error-result';
         elements.resultType.textContent = 'REQUEST ERROR';
-        elements.resultType.classList.add('error-result');
-        elements.resultModel.textContent = 'No response was generated';
-        elements.responseFootnote.textContent = 'Request failed · review the message above';
+        elements.resultModel.textContent = 'No successful response was generated';
+        elements.responseFootnote.textContent = message;
+        currentAnswer = '';
+        elements.copyAnswer.disabled = true;
+        elements.copyAnswerBottom.disabled = true;
+        elements.exportAnswer.disabled = true;
       }
-      showToast(error instanceof TypeError ? 'Could not reach the API. Retry shortly.' : (error.message || 'Request failed'), 'error');
+      showToast(networkFailure ? 'Could not reach the API. Retry shortly.' : (error.message || 'Request failed'), 'error');
     }
   } finally {
     clearTimeout(timeout);
@@ -755,6 +765,7 @@ async function generateResponse() {
     elements.generate.classList.remove('is-loading');
     elements.generateLabel.textContent = 'Generate response';
     elements.responseBody.classList.remove('is-working');
+    elements.responseBody.setAttribute('aria-busy', 'false');
     elements.copyAnswer.disabled = !currentAnswer;
     elements.copyAnswerBottom.disabled = !currentAnswer;
     elements.exportAnswer.disabled = !currentAnswer;
