@@ -132,8 +132,8 @@
               <button class="prompt-chip" type="button" data-mode="chat" data-prompt="Explain the JavaScript event loop with a practical example.">Explain the event loop <span>↗</span></button>
               <button class="prompt-chip" type="button" data-mode="chat" data-prompt="Review this function for readability, edge cases, and performance:">Review a function <span>↗</span></button>
             </div></div>
-            <div class="composer-actions"><button id="clearPrompt" class="button-quiet" type="button">Clear prompt</button><button id="stopGeneration" class="button-quiet stop-generation" type="button" hidden>Stop request</button><button id="generate" class="generate-button" type="button"><span class="generate-icon" aria-hidden="true">✳</span><span id="generateLabel">Generate response</span><span class="generate-arrow" aria-hidden="true">↗</span></button></div>
-            <div class="composer-footnote"><span class="lock-icon" aria-hidden="true">⌑</span><span>Prompts are sent to your configured server. Avoid entering secrets.</span></div>
+            <div class="composer-actions"><button id="clearPrompt" class="button-quiet" type="button">Clear prompt</button><button id="attachFile" class="button-quiet attach-file" type="button"><span aria-hidden="true">↥</span> Attach text</button><input id="promptFile" class="sr-only" type="file" accept=".txt,.md,.js,.jsx,.ts,.tsx,.json,.py,.sql,.html,.css,.yml,.yaml,.log" tabindex="-1" aria-label="Choose a text or source-code file"><button id="stopGeneration" class="button-quiet stop-generation" type="button" hidden>Stop request</button><button id="generate" class="generate-button" type="button"><span class="generate-icon" aria-hidden="true">✳</span><span id="generateLabel">Generate response</span><span class="generate-arrow" aria-hidden="true">↗</span></button></div>
+            <div class="composer-footnote"><span class="lock-icon" aria-hidden="true">⌑</span><span>Text file contents are added to the prompt and sent to your server. Avoid secrets.</span></div>
           </article>
 
           <article class="panel response-panel">

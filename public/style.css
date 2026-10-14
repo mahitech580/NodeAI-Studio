@@ -332,3 +332,11 @@ html[data-theme="light"] .art-core { background: linear-gradient(140deg, rgba(13
 @media (max-width: 390px) {
   .context-indicator { display: none; }
 }
+
+
+/* Local text/source attachment control */
+.attach-file { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.attach-file span { color: var(--cyan); font-size: 14px; }
+@media (max-width: 390px) {
+  .attach-file { font-size: 9px; padding-inline: 0; }
+}

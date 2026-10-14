@@ -13,6 +13,8 @@ const elements = {
   contextIndicator: $('#contextIndicator'),
   generateLabel: $('#generateLabel'),
   clearPrompt: $('#clearPrompt'),
+  attachFile: $('#attachFile'),
+  promptFile: $('#promptFile'),
   newSession: $('#newSession'),
   responseBody: $('#responseBody'),
   emptyResponse: $('#emptyResponse'),
@@ -438,6 +440,54 @@ async function generateResponse() {
 }
 }
 
+const ALLOWED_TEXT_EXTENSIONS = new Set(['txt', 'md', 'js', 'jsx', 'ts', 'tsx', 'json', 'py', 'sql', 'html', 'css', 'yml', 'yaml', 'log']);
+const MAX_ATTACHMENT_BYTES = 64 * 1024;
+
+function getFileExtension(name) {
+  const index = name.lastIndexOf('.');
+  return index < 0 ? '' : name.slice(index + 1).toLowerCase();
+}
+
+function attachmentLanguage(name) {
+  const extension = getFileExtension(name);
+  const aliases = { js: 'javascript', jsx: 'jsx', ts: 'typescript', tsx: 'tsx', py: 'python', yml: 'yaml', html: 'html', sql: 'sql', json: 'json', css: 'css', md: 'markdown' };
+  return aliases[extension] || extension;
+}
+
+async function handlePromptFile(file) {
+  if (!file) return;
+  const extension = getFileExtension(file.name);
+  if (!ALLOWED_TEXT_EXTENSIONS.has(extension)) {
+    showToast('Choose a supported text or source-code file', 'warning');
+    return;
+  }
+  if (file.size > MAX_ATTACHMENT_BYTES) {
+    showToast('Files must be 64 KB or smaller', 'warning');
+    return;
+  }
+  try {
+    const content = await file.text();
+    if (!content.trim()) {
+      showToast('That file is empty', 'warning');
+      return;
+    }
+    const block = '\\n\\nAttached file: ' + file.name + '\\n```' + attachmentLanguage(file.name) + '\\n' + content.trimEnd() + '\\n```';
+    const combined = elements.prompt.value + block;
+    if (combined.length > serverConfig.maxPromptLength) {
+      showToast('The file would exceed the prompt character limit. Shorten the prompt first.', 'warning');
+      return;
+    }
+    elements.prompt.value = combined;
+    updatePromptCount();
+    elements.prompt.focus();
+    showToast('Added ' + file.name + ' to the prompt');
+  } catch {
+    showToast('Could not read that file', 'error');
+  } finally {
+    elements.promptFile.value = '';
+  }
+}
+
 function newSession() {
   elements.prompt.value = '';
   conversationTurns = [];
@@ -520,6 +570,8 @@ elements.generate.addEventListener('click', generateResponse);
 elements.stopGeneration.addEventListener('click', () => {
   if (requestController) requestController.abort();
 });
+elements.attachFile.addEventListener('click', () => elements.promptFile.click());
+elements.promptFile.addEventListener('change', () => handlePromptFile(elements.promptFile.files?.[0]));
 elements.clearPrompt.addEventListener('click', () => {
   elements.prompt.value = '';
   updatePromptCount();

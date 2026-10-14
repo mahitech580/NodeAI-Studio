@@ -218,3 +218,15 @@ test('chat context is passed as validated prior turns in order', async (t) => {
   ]);
 });
 
+test('workspace exposes local text attachment and context controls', async (t) => {
+  const base = await makeServer(t);
+  const response = await fetch(base + '/');
+  const html = await response.text();
+
+  assert.equal(response.status, 200);
+  assert.match(html, /id="attachFile"/);
+  assert.match(html, /id="promptFile"/);
+  assert.match(html, /id="stopGeneration"/);
+  assert.match(html, /id="contextIndicator"/);
+});
+
