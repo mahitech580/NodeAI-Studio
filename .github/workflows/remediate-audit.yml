@@ -1,0 +1,57 @@
+name: Temporary dependency remediation
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  remediate:
+    if: startsWith(github.event.head_commit.message, 'chore: run npm audit fix')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Apply compatible audit fixes to the lockfile
+        run: npm audit fix --package-lock-only
+      - name: Reinstall from the updated lockfile
+        run: npm ci
+      - name: Verify syntax and regression suite
+        run: npm run check && npm test
+      - name: Verify critical advisories are resolved
+        shell: bash
+        run: |
+          npm audit --json > npm-audit-report.json || true
+          node <<'NODE'
+          const fs = require('node:fs');
+          const report = JSON.parse(fs.readFileSync('npm-audit-report.json', 'utf8'));
+          const summary = report.metadata?.vulnerabilities || {};
+          const findings = report.vulnerabilities || {};
+          console.log(JSON.stringify({ summary, findings: Object.entries(findings).map(([name, value]) => ({
+            name, severity: value.severity, range: value.range, fixAvailable: value.fixAvailable
+          })) }, null, 2));
+          if (Number(summary.critical || 0) > 0 || findings['proxy-addr']) {
+            console.error('Critical dependency advisories remain after compatible updates.');
+            process.exit(1);
+          }
+          NODE
+      - name: Commit the patched lockfile
+        shell: bash
+        run: |
+          if git diff --quiet -- package-lock.json; then
+            echo "No lockfile changes were needed."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package-lock.json
+          git commit -m "fix: patch critical proxy-addr advisory"
+          git push
