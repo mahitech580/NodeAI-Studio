@@ -367,7 +367,7 @@ async function generateResponse() {
     setServerStatus(data.demoMode ? 'demo' : 'online', data.demoMode ? 'Demo mode' : 'AI connected');
     showToast(data.demoMode ? 'Demo response ready' : 'Response generated');
   } catch (error) {
-    showResponse('Request failed\\n\\n' + error.message + '\\n\\nCheck the server status and try again.', { demoMode: true });
+    showResponse('Request failed\n\n' + error.message + '\n\nCheck the server status and try again.', { demoMode: true });
     elements.resultType.textContent = 'REQUEST ERROR';
     elements.resultType.classList.add('error-result');
     elements.resultModel.textContent = 'No response was generated';
@@ -421,10 +421,10 @@ function exportAnswer() {
   if (!currentAnswer) return;
   const mode = MODE_CONFIG[currentMode].title;
   const created = currentResult && currentResult.createdAt ? currentResult.createdAt : new Date().toISOString();
-  const documentText = '# NodeAI Studio — ' + mode + '\\n\\n' +
-    '**Created:** ' + created + '\\n\\n' +
-    '## Prompt\\n\\n' + elements.prompt.value.trim() + '\\n\\n' +
-    '## Response\\n\\n' + currentAnswer + '\\n';
+  const documentText = '# NodeAI Studio — ' + mode + '\n\n' +
+    '**Created:** ' + created + '\n\n' +
+    '## Prompt\n\n' + elements.prompt.value.trim() + '\n\n' +
+    '## Response\n\n' + currentAnswer + '\n';
   const blob = new Blob([documentText], { type: 'text/markdown;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a');
