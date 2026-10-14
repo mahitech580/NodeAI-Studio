@@ -537,7 +537,6 @@ async function generateResponse() {
     elements.responseBody.classList.remove('is-working');
   }
 }
-}
 
 const ALLOWED_TEXT_EXTENSIONS = new Set(['txt', 'md', 'js', 'jsx', 'ts', 'tsx', 'json', 'py', 'sql', 'html', 'css', 'yml', 'yaml', 'log']);
 const MAX_ATTACHMENT_BYTES = 64 * 1024;
