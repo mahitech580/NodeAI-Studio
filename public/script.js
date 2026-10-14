@@ -3,35 +3,17 @@
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
 const API_BASE_URL = String(window.NODEAI_CONFIG?.apiBaseUrl || '').trim().replace(/\/+$/, '');
-const API_TIMEOUT_MS = 120000;
+const API_TIMEOUT_MS = 90000;
+const RENDER_COLD_START_HINT_MS = 12000;
 const MAX_ATTACHMENT_BYTES = 64 * 1024;
+const HISTORY_STORAGE_KEY = 'nodeai-session-history';
+const LOCAL_HISTORY_LIMIT = 50;
 const ALLOWED_TEXT_EXTENSIONS = new Set([
   'txt', 'md', 'mdx', 'js', 'jsx', 'ts', 'tsx', 'json', 'py', 'sql', 'html', 'css', 'yml', 'yaml', 'log'
 ]);
 
 function apiUrl(path) {
   return API_BASE_URL ? API_BASE_URL + path : path;
-}
-
-const BROWSER_SESSION_KEY = 'nodeai.studio.sessionId.v1';
-
-function browserSessionId() {
-  let id = safelyReadStorage(BROWSER_SESSION_KEY, '');
-  const valid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-  if (!valid.test(id)) {
-    id = globalThis.crypto?.randomUUID
-      ? globalThis.crypto.randomUUID()
-      : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (character) => {
-        const random = Math.floor(Math.random() * 16);
-        return (character === 'x' ? random : (random & 0x3) | 0x8).toString(16);
-      });
-    safelyWriteStorage(BROWSER_SESSION_KEY, id);
-  }
-  return id;
-}
-
-function apiHeaders(headers = {}) {
-  return { ...headers, 'X-NodeAI-Session': browserSessionId() };
 }
 
 const elements = {
@@ -66,7 +48,7 @@ const MODE_CONFIG = {
 let currentMode = 'chat';
 let currentAnswer = '';
 let currentResult = null;
-let historyCache = [];
+let historyCache = readLocalHistory();
 let conversationTurns = [];
 let requestController = null;
 let busy = false;
@@ -89,6 +71,41 @@ function safelyWriteStorage(key, value) {
   } catch {
     showToast('Browser storage is unavailable; this change may not persist.', 'warning');
   }
+}
+
+function readLocalHistory() {
+  try {
+    const parsed = JSON.parse(safelyReadStorage(HISTORY_STORAGE_KEY, '[]'));
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((item) =>
+      item &&
+      typeof item.id === 'string' &&
+      Object.hasOwn(MODE_CONFIG, item.mode) &&
+      typeof item.prompt === 'string' &&
+      typeof item.answer === 'string'
+    ).slice(0, LOCAL_HISTORY_LIMIT);
+  } catch {
+    return [];
+  }
+}
+
+function recordLocalHistory(item) {
+  const fallbackId = String(Date.now()) + '-' + Math.random().toString(36).slice(2, 8);
+  const safeItem = {
+    id: String(item.id || (window.crypto?.randomUUID?.() || fallbackId)),
+    mode: Object.hasOwn(MODE_CONFIG, item.mode) ? item.mode : 'chat',
+    tone: ['balanced', 'concise', 'deep'].includes(item.tone) ? item.tone : 'balanced',
+    prompt: String(item.prompt || ''),
+    answer: String(item.answer || ''),
+    demoMode: Boolean(item.demoMode),
+    model: item.model || null,
+    durationMs: Number.isFinite(Number(item.durationMs)) ? Number(item.durationMs) : null,
+    createdAt: item.createdAt || new Date().toISOString()
+  };
+  historyCache = [safeItem, ...historyCache.filter((entry) => entry.id !== safeItem.id)].slice(0, LOCAL_HISTORY_LIMIT);
+  safelyWriteStorage(HISTORY_STORAGE_KEY, JSON.stringify(historyCache));
+  updateSessionMetrics();
+  renderHistory();
 }
 
 function readSavedPrompts() {
@@ -396,21 +413,11 @@ function restoreSession(item) {
   showToast('Session restored');
 }
 
-async function loadHistory() {
-  try {
-    const response = await fetch(apiUrl('/api/history?limit=50'), { headers: apiHeaders({ Accept: 'application/json' }), signal: AbortSignal.timeout(8000) });
-    if (!response.ok) throw new Error('History is unavailable');
-    const data = await response.json();
-    historyCache = Array.isArray(data.history) ? data.history : [];
-    updateSessionMetrics();
-    renderHistory();
-  } catch {
-    elements.history.replaceChildren();
-    const message = document.createElement('div');
-    message.className = 'history-empty';
-    message.textContent = 'History is unavailable while the server is offline.';
-    elements.history.append(message);
-  }
+function loadHistory() {
+  // Session content is saved locally and never fetched from the shared backend.
+  historyCache = readLocalHistory();
+  updateSessionMetrics();
+  renderHistory();
 }
 
 async function checkServer() {
@@ -431,7 +438,7 @@ async function checkServer() {
 
 async function fetchConfig() {
   try {
-    const response = await fetch(apiUrl('/api/config'), { headers: apiHeaders(), signal: AbortSignal.timeout(8000) });
+    const response = await fetch(apiUrl('/api/config'), { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(8000) });
     if (!response.ok) return;
     const config = await response.json();
     if (!config.success) return;
@@ -500,7 +507,16 @@ async function generateResponse() {
   busy = true;
   requestController = new AbortController();
   const activeController = requestController;
-  const timeout = setTimeout(() => activeController.abort(), API_TIMEOUT_MS);
+  let timedOut = false;
+  const timeout = setTimeout(() => {
+    timedOut = true;
+    activeController.abort();
+  }, API_TIMEOUT_MS);
+  const wakeHint = setTimeout(() => {
+    if (busy && requestController === activeController && !receivedAnyText) {
+      elements.responseFootnote.textContent = 'The free Render service may be waking up. The first request after inactivity can take a little longer.';
+    }
+  }, RENDER_COLD_START_HINT_MS);
   elements.generate.disabled = true;
   elements.generate.classList.add('is-loading');
   elements.generateLabel.textContent = 'Thinking…';
@@ -513,11 +529,17 @@ async function generateResponse() {
   let streamMeta = { demoMode: false, model: null, durationMs: null };
   let streamError = null;
 
+  showResponse('', { demoMode: false, model: null });
+  elements.resultType.textContent = 'CONNECTING';
+  elements.resultModel.textContent = 'Connecting to the streaming endpoint…';
+  elements.responseFootnote.textContent = 'Contacting the NodeAI API…';
+  elements.answerText.classList.add('streaming-text');
+
   try {
     const context = currentMode === 'chat' ? conversationTurns.slice(-serverConfig.maxContextMessages) : [];
     const response = await fetch(apiUrl('/api/ai/stream'), {
       method: 'POST',
-      headers: apiHeaders({ 'Content-Type': 'application/json', Accept: 'text/event-stream, application/json' }),
+      headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream, application/json' },
       body: JSON.stringify({ mode: currentMode, tone: elements.toneSelect.value, prompt, context }),
       signal: activeController.signal
     });
@@ -526,12 +548,8 @@ async function generateResponse() {
       throw new Error(payload.error || 'The request could not be completed.');
     }
 
-    showResponse('', { demoMode: false, model: null });
-    elements.resultType.textContent = 'CONNECTING';
     elements.resultModel.textContent = 'Waiting for first token…';
     elements.responseFootnote.textContent = 'The response will appear as it is generated.';
-    elements.answerText.textContent = '';
-    elements.answerText.classList.add('streaming-text');
 
     await consumeStream(response, (eventName, data) => {
       if (eventName === 'meta') {
@@ -574,13 +592,41 @@ async function generateResponse() {
     }
     elements.latencyMetric.textContent = formatDuration(streamMeta.durationMs) || '—';
     elements.latencyCaption.textContent = streamMeta.demoMode ? 'Demo response' : 'Last request duration';
-    await loadHistory();
+    recordLocalHistory({
+      id: streamMeta.requestId,
+      mode: currentMode,
+      tone: elements.toneSelect.value,
+      prompt,
+      answer: currentAnswer,
+      demoMode: streamMeta.demoMode,
+      model: streamMeta.model,
+      durationMs: streamMeta.durationMs,
+      createdAt: streamMeta.createdAt
+    });
     setServerStatus(streamMeta.demoMode ? 'demo' : 'online', streamMeta.demoMode ? 'Demo mode' : 'AI connected');
     showToast(streamMeta.demoMode ? 'Demo response ready' : 'Response generated');
   } catch (error) {
     elements.answerText.classList.remove('streaming-text');
     if (error.name === 'AbortError') {
-      if (!receivedAnyText) {
+      if (timedOut) {
+        setServerStatus('offline', 'API timeout');
+        const message = 'No complete response arrived within 90 seconds. The Render service may be waking up, or the AI provider may be slow. Retry shortly.';
+        if (!receivedAnyText) {
+          showResponse(message, { demoMode: false });
+          elements.resultType.textContent = 'REQUEST TIMEOUT';
+          elements.resultType.classList.add('error-result');
+          elements.resultModel.textContent = 'No complete response received';
+          elements.responseFootnote.textContent = message;
+          currentAnswer = '';
+          elements.copyAnswer.disabled = true;
+          elements.copyAnswerBottom.disabled = true;
+          elements.exportAnswer.disabled = true;
+        } else {
+          elements.responseFootnote.textContent = 'Timed out · partial output is shown and was not saved.';
+          elements.resultType.textContent = 'PARTIAL OUTPUT';
+        }
+        showToast('Request timed out. Please retry.', 'error');
+      } else if (!receivedAnyText) {
         elements.responseFootnote.textContent = 'Generation cancelled before output arrived.';
         showToast('Generation cancelled', 'warning');
       } else {
@@ -589,6 +635,9 @@ async function generateResponse() {
         showToast('Generation stopped', 'warning');
       }
     } else {
+      if (error instanceof TypeError) {
+        setServerStatus('offline', 'API unavailable');
+      }
       if (receivedAnyText) {
         elements.responseFootnote.textContent = 'Stream interrupted · partial output is shown.';
         elements.resultType.textContent = 'INTERRUPTED';
@@ -599,10 +648,11 @@ async function generateResponse() {
         elements.resultModel.textContent = 'No response was generated';
         elements.responseFootnote.textContent = 'Request failed · review the message above';
       }
-      showToast(error.message || 'Request failed', 'error');
+      showToast(error instanceof TypeError ? 'Could not reach the API. Retry shortly.' : (error.message || 'Request failed'), 'error');
     }
   } finally {
     clearTimeout(timeout);
+    clearTimeout(wakeHint);
     if (requestController === activeController) requestController = null;
     busy = false;
     elements.stopGeneration.hidden = true;
@@ -721,23 +771,17 @@ function exportAnswer() {
   showToast('Markdown export downloaded');
 }
 
-async function clearHistory() {
+function clearHistory() {
   if (!historyCache.length) {
-    showToast('Your history is already empty', 'warning');
+    showToast('Your local history is already empty', 'warning');
     return;
   }
-  if (!window.confirm('Clear all saved NodeAI Studio sessions from this server? This cannot be undone.')) return;
-  try {
-    const response = await fetch(apiUrl('/api/history'), { method: 'DELETE', headers: apiHeaders() });
-    const data = await response.json();
-    if (!response.ok || !data.success) throw new Error(data.error || 'Could not clear history');
-    historyCache = [];
-    updateSessionMetrics();
-    renderHistory();
-    showToast('Conversation history cleared');
-  } catch (error) {
-    showToast(error.message || 'Could not clear history', 'error');
-  }
+  if (!window.confirm('Clear the sessions saved in this browser? This cannot be undone.')) return;
+  historyCache = [];
+  safelyWriteStorage(HISTORY_STORAGE_KEY, '[]');
+  updateSessionMetrics();
+  renderHistory();
+  showToast('Browser history cleared');
 }
 
 function openCommandPalette() {

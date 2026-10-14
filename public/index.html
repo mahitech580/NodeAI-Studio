@@ -35,14 +35,14 @@
         <div class="history-heading"><h2 id="historyHeading">Recent sessions</h2><span id="historyCount" class="count-pill">0</span></div>
         <label class="history-search"><span aria-hidden="true">⌕</span><input id="historySearch" type="search" placeholder="Find a session…" autocomplete="off" aria-label="Search recent sessions"><kbd>/</kbd></label>
         <div id="history" class="history-list" aria-live="polite"><div class="history-empty"><span class="history-empty-mark">◌</span><span>Your sessions will appear here.</span></div></div>
-        <button id="clearHistory" class="clear-history" type="button">Clear conversation history</button>
+        <button id="clearHistory" class="clear-history" type="button">Clear browser history</button>
       </section>
       <details class="saved-prompt-section">
         <summary><span>Saved prompts</span><span id="savedPromptCount" class="count-pill">0</span></summary>
         <div id="savedPrompts" class="saved-prompt-list"><div class="saved-prompts-empty">Save a useful prompt to reuse it later.</div></div>
       </details>
       <div class="sidebar-bottom">
-        <div class="privacy-note"><span class="privacy-dot"></span><span>Private by default</span></div>
+        <div class="privacy-note"><span class="privacy-dot"></span><span>History stays in this browser</span></div>
         <div class="sidebar-footer"><span class="footer-mark">N.</span><span>Built for the next idea.</span><span class="version">v2.1</span></div>
       </div>
     </aside>
@@ -76,7 +76,7 @@
 
         <section class="metrics" aria-label="Workspace overview">
           <article class="metric-card"><span class="metric-icon violet" aria-hidden="true">✳</span><div><span class="metric-label">WORKFLOWS</span><strong>04</strong><small>Focused dev tools</small></div><span class="metric-sparkline spark-violet" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span></article>
-          <article class="metric-card"><span class="metric-icon cyan" aria-hidden="true">⌁</span><div><span class="metric-label">SESSIONS SAVED</span><strong id="sessionMetric">—</strong><small>Stored on this server</small></div><span class="metric-sparkline spark-cyan" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span></article>
+          <article class="metric-card"><span class="metric-icon cyan" aria-hidden="true">⌁</span><div><span class="metric-label">SESSIONS SAVED</span><strong id="sessionMetric">—</strong><small>Stored in this browser</small></div><span class="metric-sparkline spark-cyan" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span></article>
           <article class="metric-card"><span class="metric-icon pink" aria-hidden="true">↗</span><div><span class="metric-label">LAST RESPONSE</span><strong id="latencyMetric">—</strong><small id="latencyCaption">Ready for a prompt</small></div><span class="metric-pulse" aria-hidden="true"><i></i><i></i><i></i></span></article>
         </section>
 
@@ -98,7 +98,7 @@
               <button class="prompt-chip" type="button" data-mode="chat" data-prompt="Review this function for readability, edge cases, and performance:">Review a function <span>↗</span></button>
             </div></div>
             <div class="composer-actions"><button id="clearPrompt" class="button-quiet" type="button">Clear prompt</button><button id="stopGeneration" class="button-quiet stop-generation" type="button" hidden>Stop generation</button><button id="generate" class="generate-button" type="button"><span class="generate-icon" aria-hidden="true">✳</span><span id="generateLabel">Generate response</span><span class="generate-arrow" aria-hidden="true">↗</span></button></div>
-            <div class="composer-footnote"><span class="lock-icon" aria-hidden="true">⌑</span><span>Text attachments are inserted into the prompt. Never include passwords or API keys.</span></div>
+            <div class="composer-footnote"><span class="lock-icon" aria-hidden="true">⌑</span><span>Prompts are sent to the configured API. Never include passwords or API keys.</span></div>
           </article>
 
           <article class="panel response-panel">

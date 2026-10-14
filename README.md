@@ -12,11 +12,11 @@ A responsive developer workspace for AI-assisted engineering questions, code gen
 - **Multi-turn context:** chat sends a bounded set of recent user/assistant messages; system-role messages from clients are rejected.
 - **Source-file context:** attach approved text/source files up to 64 KB. The contents are inserted in your prompt; binary files are not uploaded.
 - **Reusable prompts:** save up to 100 templates in browser-local storage and reload/remove them by workflow.
-- **Session history:** latest 50 requests are stored on the server; search, restore, or clear them.
+- **Session history:** the latest 50 sessions are stored in this browser only; search, restore, or clear them. The shared backend does not persist prompts or responses.
 - **Export/copy:** copy the answer or save a Markdown report containing the prompt and response.
 - **Quick actions:** searchable command palette (Ctrl/Cmd + K), generate (Ctrl/Cmd + Enter), and history search (/).
 - **Responsive design:** reduced-motion support, dark/light themes, mobile workflow navigation, and visible keyboard focus.
-- **Safer defaults:** server-only credentials, Helmet security headers, request and prompt limits, API throttling, validated context, atomic history writes, and consistent JSON errors.
+- **Safer defaults:** server-only credentials, Helmet security headers, request and prompt limits, API throttling, validated context, browser-local history, and consistent JSON errors.
 
 ## Run locally
 
@@ -43,23 +43,12 @@ Without AI_API_KEY, the backend stays in Demo mode. Demo text is labelled and is
 | PORT | HTTP port; defaults to 3000. |
 | NODE_ENV | Set production on a production host. |
 | CORS_ORIGIN | Comma-separated exact allowed frontend origins for cross-origin use. |
-| HISTORY_FILE | Optional path to a writable JSON history file. |
 
 ### Live Render backend and GitHub Pages
 
-The published [NodeAI Studio frontend](https://mahitech580.github.io/NodeAI-Studio/) is configured to call the [NodeAI Render API](https://nodeai-studio-api-mahitech580.onrender.com). The API exposes:
+The published [NodeAI Studio frontend](https://mahitech580.github.io/NodeAI-Studio/) calls the [NodeAI Render API](https://nodeai-studio-api-mahitech580.onrender.com). The API exposes health, readiness, capabilities, and generation endpoints. The API's `CORS_ORIGIN` must include the exact GitHub Pages origin and the Render origin for same-origin use; the public frontend configuration contains no secret. The `X-Request-ID` header makes requests easier to correlate with server logs.
 
-- `GET /api/health` for liveness and whether live AI is configured.
-- `GET /api/ready` for the history-storage readiness check; Render's Blueprint uses this health-check path.
-- `GET /api/config` for runtime capabilities.
-- `POST /api/ai` and `POST /api/ai/stream` for generation.
-- `GET /api/history` and `DELETE /api/history` for the current browser session's history.
-
-The Render service should use `NODE_ENV=production`, `TRUST_PROXY=true`, and `CORS_ORIGIN=https://mahitech580.github.io`. Trusting one proxy hop lets IP-based rate limiting see the client address forwarded by Render. A `X-Request-ID` header is attached to each request so errors can be correlated with server logs.
-
-History is partitioned by a random browser-session UUID sent in `X-NodeAI-Session`; clearing history removes only the current browser session's entries. This is a convenience boundary, **not authentication or a secure tenant boundary**—anyone who learns another browser's session UUID could impersonate that session. Do not treat the service as a private multi-user product without authenticated users and server-validated ownership.
-
-History remains file-backed, so Render's ephemeral filesystem may lose it on redeploy or restart. For durable sessions, use persistent storage or a database-backed history adapter.
+Conversation history is stored in browser local storage and is never written to the shared server. It can be viewed by someone with access to that browser profile, and clearing browser storage removes it. In live mode, the prompt is still sent to this server and the configured AI provider to generate a response. The API has no account login, so CORS is not authentication and the service should not be treated as a private multi-user API. Render's ephemeral filesystem is no longer used for conversation storage.
 
 The deployed backend currently operates in **Demo mode** until `AI_API_KEY` is set in the Render service's private Environment settings. Set `AI_MODEL` there only to a model supported by that key. Never place provider secrets in `public/config.js` or in GitHub.
 
@@ -68,11 +57,11 @@ The deployed backend currently operates in **Demo mode** until `AI_API_KEY` is s
 | Method | Endpoint | Description |
 | --- | --- | --- |
 | GET | /api/health | Service health, demo/live state, configured model name, version, and uptime. |
-| GET | /api/config | Supported modes, response styles, prompt/context limits, and streaming capability. |\n| GET | /api/ready | History-storage readiness, including a 503 when the configured store is unavailable. |
+| GET | /api/config | Supported modes, response styles, prompt/context limits, and streaming capability. |\n| GET | /api/ready | Service readiness; does not depend on server-side history storage. |
 | POST | /api/ai | Non-streaming generation for API clients. |
 | POST | /api/ai/stream | Server-sent event stream: meta, delta, done, or error. |
-| GET | /api/history | List saved entries; supports limit, mode, and q. |
-| DELETE | /api/history | Clear the server's conversation history. |
+| GET | /api/history | Compatibility endpoint returning an empty list; sessions stay in the browser. |
+| DELETE | /api/history | Compatibility endpoint; the server stores no conversation history. |
 
 AI request JSON fields: mode, tone, prompt, and context. Supported modes are chat, code, debug, and sql; response styles are balanced, concise, and deep. Context is accepted only for chat, limited to eight user/assistant messages and 16,000 combined characters. Prompts are limited to 12,000 characters. The default AI request budget is 20 requests per minute per client IP. Multiple Node instances require a shared rate-limit store.
 
@@ -93,7 +82,6 @@ GitHub Actions installs the lockfile, checks JavaScript syntax, and runs the API
     │   ├── script.js
     │   └── style.css
     ├── test/server.test.js
-    ├── storage/history.json
     ├── index.html
     ├── server.js
     ├── package.json

@@ -2,16 +2,11 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('node:fs/promises');
-const os = require('node:os');
-const path = require('node:path');
 const { createApp, MAX_PROMPT_LENGTH } = require('../server');
 
 async function makeServer(t, options = {}) {
-  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'nodeai-studio-'));
   const app = createApp({
     aiClient: null,
-    historyFile: path.join(directory, 'history.json'),
     rateLimitMax: 50,
     ...options
   });
@@ -22,7 +17,6 @@ async function makeServer(t, options = {}) {
   });
   t.after(async () => {
     await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
-    await fs.rm(directory, { recursive: true, force: true });
   });
   return 'http://127.0.0.1:' + server.address().port;
 }
@@ -74,7 +68,7 @@ test('AI endpoint rejects excessive prompt size', async (t) => {
   assert.equal(response.status, 413);
 });
 
-test('non-streaming demo responses are labelled and persisted', async (t) => {
+test('non-streaming demo responses are labelled but not persisted on the shared server', async (t) => {
   const base = await makeServer(t);
   const response = await jsonPost(base + '/api/ai', { mode: 'code', tone: 'concise', prompt: 'Build a health endpoint' });
   const result = await response.json();
@@ -83,13 +77,13 @@ test('non-streaming demo responses are labelled and persisted', async (t) => {
   assert.equal(result.demoMode, true);
   assert.match(result.answer, /Demo mode is active/i);
   const history = await (await fetch(base + '/api/history')).json();
-  assert.equal(history.total, 1);
-  assert.equal(history.history[0].prompt, 'Build a health endpoint');
-  assert.equal(history.history[0].tone, 'concise');
-  assert.equal(history.history[0].id, result.requestId);
+  assert.equal(history.total, 0);
+  assert.deepEqual(history.history, []);
+  assert.equal(history.storage, 'browser-only');
+  assert.equal(JSON.stringify(history).includes('Build a health endpoint'), false);
 });
 
-test('stream endpoint emits metadata, token deltas, and completion, then saves history', async (t) => {
+test('stream endpoint emits metadata, token deltas, and completion without server-side history', async (t) => {
   const base = await makeServer(t);
   const response = await jsonPost(base + '/api/ai/stream', {
     mode: 'chat', tone: 'balanced', prompt: 'Explain promises'
@@ -101,7 +95,7 @@ test('stream endpoint emits metadata, token deltas, and completion, then saves h
   assert.match(text, /event: delta/);
   assert.match(text, /event: done/);
   assert.match(text, /Demo mode is active/);
-  assert.equal((await (await fetch(base + '/api/history')).json()).total, 1);
+  assert.equal((await (await fetch(base + '/api/history')).json()).total, 0);
 });
 
 test('live stream forwards validated context and tone settings to provider', async (t) => {
@@ -127,23 +121,57 @@ test('live stream forwards validated context and tone settings to provider', asy
   assert.match(body, /answer\./);
   assert.match(body, /event: done/);
   const savedHistory = await (await fetch(base + '/api/history')).json();
-  assert.equal(savedHistory.history[0].answer, 'Contextual answer.');
+  assert.deepEqual(savedHistory.history, []);
+  assert.equal(JSON.stringify(savedHistory).includes('Contextual answer.'), false);
   assert.equal(captured[0].stream, true);
   assert.equal(captured[0].temperature, 0.35);
   assert.deepEqual(captured[0].messages.slice(1), [...context, { role: 'user', content: 'Add a health endpoint' }]);
 });
 
-test('history filters, invalid mode, pagination, and clearing work', async (t) => {
+test('history compatibility endpoint never exposes prompt data and validates mode', async (t) => {
   const base = await makeServer(t);
-  await jsonPost(base + '/api/ai', { mode: 'chat', prompt: 'Explain promises' });
-  await jsonPost(base + '/api/ai', { mode: 'sql', prompt: 'Create a query' });
-  const filtered = await (await fetch(base + '/api/history?q=promises&mode=chat&limit=1')).json();
-  assert.equal(filtered.total, 1);
-  assert.equal(filtered.history.length, 1);
-  assert.match(filtered.history[0].prompt, /promises/i);
+  await jsonPost(base + '/api/ai', { mode: 'chat', prompt: 'Sensitive prompt marker' });
+  const response = await fetch(base + '/api/history?q=Sensitive&mode=chat&limit=1');
+  const result = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(result.total, 0);
+  assert.deepEqual(result.history, []);
+  assert.equal(result.storage, 'browser-only');
+  assert.equal(JSON.stringify(result).includes('Sensitive prompt marker'), false);
   assert.equal((await fetch(base + '/api/history?mode=invalid')).status, 400);
-  assert.equal((await fetch(base + '/api/history', { method: 'DELETE' })).status, 200);
-  assert.equal((await (await fetch(base + '/api/history')).json()).total, 0);
+  const cleared = await fetch(base + '/api/history', { method: 'DELETE' });
+  assert.equal(cleared.status, 200);
+  assert.match((await cleared.json()).message, /no server-side conversation history/i);
+});
+
+test('configured GitHub Pages and Render origins can call the API', async (t) => {
+  const origins = [
+    'https://mahitech580.github.io',
+    'https://nodeai-studio-api-mahitech580.onrender.com'
+  ];
+  const base = await makeServer(t, { allowedOrigins: origins });
+  for (const origin of origins) {
+    const health = await fetch(base + '/api/health', { headers: { Origin: origin } });
+    assert.equal(health.status, 200);
+    assert.equal(health.headers.get('access-control-allow-origin'), origin);
+    const response = await fetch(base + '/api/ai/stream', {
+      method: 'POST',
+      headers: { Origin: origin, 'Content-Type': 'application/json', Accept: 'text/event-stream' },
+      body: JSON.stringify({ mode: 'chat', prompt: 'CORS smoke test' })
+    });
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get('access-control-allow-origin'), origin);
+    assert.match(await response.text(), /event: done/);
+  }
+});
+
+test('disallowed CORS origin is rejected explicitly', async (t) => {
+  const base = await makeServer(t, { allowedOrigins: ['https://mahitech580.github.io'] });
+  const response = await fetch(base + '/api/health', {
+    headers: { Origin: 'https://untrusted.example' }
+  });
+  assert.equal(response.status, 403);
+  assert.equal(response.headers.get('access-control-allow-origin'), null);
 });
 
 test('static workspace contains advanced controls and serves source assets', async (t) => {
@@ -151,7 +179,7 @@ test('static workspace contains advanced controls and serves source assets', asy
   const response = await fetch(base + '/');
   const html = await response.text();
   assert.equal(response.status, 200);
-  for (const selector of ['id="toneSelect"', 'id="stopGeneration"', 'id="commandDialog"', 'id="savedPrompts"']) {
+  for (const selector of ['id="toneSelect"', 'id="stopGeneration"', 'id="commandDialog"', 'id="savedPrompts"', 'History stays in this browser']) {
     assert.ok(html.includes(selector), selector);
   }
   for (const asset of ['/script.js', '/style.css', '/config.js']) {
@@ -169,14 +197,14 @@ test('rate limiting returns retry guidance after the request budget is reached',
 });
 
 
-test('readiness reports whether the history store is readable and writable', async (t) => {
+test('readiness reports service readiness without persistent session storage', async (t) => {
   const base = await makeServer(t);
   const response = await fetch(base + '/api/ready');
   const body = await response.json();
   assert.equal(response.status, 200);
   assert.equal(body.success, true);
   assert.equal(body.status, 'ready');
-  assert.equal(body.dependencies.historyStorage, 'available');
+  assert.equal(body.dependencies.sessionHistory, 'browser-only');
   assert.match(response.headers.get('x-request-id') || '', /^[0-9a-f-]{36}$/i);
 });
 
@@ -191,41 +219,6 @@ test('malformed JSON returns a structured 400 response with request correlation'
   assert.equal(response.status, 400);
   assert.match(body.error, /valid JSON/i);
   assert.equal(body.requestId, response.headers.get('x-request-id'));
-});
-
-test('history is isolated by browser session and deletion affects only that session', async (t) => {
-  const base = await makeServer(t);
-  const sessionA = '11111111-1111-4111-8111-111111111111';
-  const sessionB = '22222222-2222-4222-8222-222222222222';
-
-  const a = await jsonPost(base + '/api/ai', { mode: 'chat', prompt: 'session A private history' }, {
-    'X-NodeAI-Session': sessionA
-  });
-  const b = await jsonPost(base + '/api/ai', { mode: 'chat', prompt: 'session B separate history' }, {
-    'X-NodeAI-Session': sessionB
-  });
-  assert.equal(a.status, 200);
-  assert.equal(b.status, 200);
-
-  const historyA = await fetch(base + '/api/history', { headers: { 'X-NodeAI-Session': sessionA } });
-  const responseA = await historyA.json();
-  assert.equal(responseA.total, 1);
-  assert.equal(responseA.history[0].prompt, 'session A private history');
-  assert.equal(Object.hasOwn(responseA.history[0], 'sessionScope'), false);
-
-  const cleared = await fetch(base + '/api/history', {
-    method: 'DELETE',
-    headers: { 'X-NodeAI-Session': sessionA }
-  });
-  assert.equal(cleared.status, 200);
-  assert.equal((await (await fetch(base + '/api/history', {
-    headers: { 'X-NodeAI-Session': sessionA }
-  })).json()).total, 0);
-  const remainingB = await (await fetch(base + '/api/history', {
-    headers: { 'X-NodeAI-Session': sessionB }
-  })).json();
-  assert.equal(remainingB.total, 1);
-  assert.equal(remainingB.history[0].prompt, 'session B separate history');
 });
 
 test('unknown API routes return structured JSON errors', async (t) => {
