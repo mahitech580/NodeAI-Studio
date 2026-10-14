@@ -392,7 +392,7 @@ function createApp(options = {}) {
       const item = {
         id: requestId, mode: request.mode, tone: request.tone, prompt: request.prompt, answer,
         demoMode: !ai, model: ai ? model : null, durationMs: Date.now() - startedAt,
-        contextMessageCount: request.context.length, createdAt: new Date().toISOString()
+        contextMessageCount: request.context.length, sessionScope: historyScope(req), createdAt: new Date().toISOString()
       };
       await saveEntry(item);
       event('done', {
