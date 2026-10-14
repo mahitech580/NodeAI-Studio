@@ -174,6 +174,29 @@ test('disallowed CORS origin is rejected explicitly', async (t) => {
   assert.equal(response.headers.get('access-control-allow-origin'), null);
 });
 
+test('each workflow has its own frontend controls and payload builder', async (t) => {
+  const base = await makeServer(t);
+  const html = await (await fetch(base + '/')).text();
+  for (const selector of [
+    'id="modeSettings"', 'data-settings="chat"', 'data-settings="code"',
+    'data-settings="debug"', 'data-settings="sql"', 'id="codeLanguage"',
+    'id="debugObserved"', 'id="sqlSchema"', 'id="responseTitle"'
+  ]) {
+    assert.ok(html.includes(selector), selector);
+  }
+  const script = await (await fetch(base + '/script.js')).text();
+  for (const setting of [
+    'function buildWorkflowPrompt', 'Implementation settings:', 'Debugging context:',
+    'SQL settings:', 'elements.modeSettingsCards', 'document.body.dataset.mode = mode'
+  ]) {
+    assert.ok(script.includes(setting), setting);
+  }
+  const style = await (await fetch(base + '/style.css')).text();
+  for (const mode of ['chat', 'code', 'debug', 'sql']) {
+    assert.ok(style.includes('body[data-mode="' + mode + '"]'), mode + ' theme');
+  }
+});
+
 test('static workspace contains advanced controls and serves source assets', async (t) => {
   const base = await makeServer(t);
   const response = await fetch(base + '/');
