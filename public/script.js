@@ -159,7 +159,10 @@ function updateMode(mode, options = {}) {
     button.setAttribute('aria-pressed', String(active));
   });
   elements.breadcrumbMode.textContent = config.title;
-  elements.modeBadge.textContent = config.badge;
+  elements.modeBadge.replaceChildren();
+  const badgeDot = document.createElement('span');
+  badgeDot.className = 'badge-dot';
+  elements.modeBadge.append(badgeDot, document.createTextNode(' ' + config.badge));
   elements.prompt.placeholder = config.placeholder;
   elements.promptChips.replaceChildren(...config.chips.map((item) => makeChip(item[0], item[1], mode)));
   document.title = config.title + ' — NodeAI Studio';
