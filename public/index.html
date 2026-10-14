@@ -9,9 +9,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=2.3.0">
-  <script src="config.js?v=2.3.0"></script>
-  <script src="script.js?v=2.3.0" defer></script>
+  <link rel="stylesheet" href="style.css?v=2.3.1">
+  <script src="config.js?v=2.3.1"></script>
+  <script src="script.js?v=2.3.1" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to workspace</a>
@@ -43,7 +43,7 @@
       </details>
       <div class="sidebar-bottom">
         <div class="privacy-note"><span class="privacy-dot"></span><span>History stays in this browser</span></div>
-        <div class="sidebar-footer"><span class="footer-mark">N.</span><span>Built for the next idea.</span><span class="version">v2.3</span></div>
+        <div class="sidebar-footer"><span class="footer-mark">N.</span><span>Built for the next idea.</span><span class="version">v2.3.1</span></div>
       </div>
     </aside>
 
@@ -208,9 +208,10 @@
         </select>
       </label>
       <label class="provider-field" for="providerModel">Model ID
-        <input id="providerModel" type="text" spellcheck="false" autocomplete="off" maxlength="128" value="gemini-3.8-flash" placeholder="e.g. gemini-3.8-flash">
+        <input id="providerModel" type="text" list="providerModels" spellcheck="false" autocomplete="off" maxlength="128" value="gemini-3.8-flash" placeholder="e.g. gemini-3.8-flash">
+        <datalist id="providerModels"></datalist>
       </label>
-      <p id="providerModelHint" class="provider-help">Default model for this provider. You can replace it with any supported model ID.</p>
+      <div class="provider-model-actions"><p id="providerModelHint" class="provider-help">Default model for this provider. Fetch models available to your key, or enter an ID manually.</p><button id="loadModels" class="provider-load-models" type="button"><span aria-hidden="true">⟳</span><span id="loadModelsLabel">Load models</span></button></div>
       <label class="provider-field" for="providerApiKey">Provider API key
         <input id="providerApiKey" type="password" spellcheck="false" autocomplete="new-password" maxlength="512" placeholder="Paste your provider key" aria-describedby="providerKeyHelp">
       </label>

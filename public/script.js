@@ -51,6 +51,7 @@ const elements = {
   providerConnectDot: $('#providerConnectDot'), providerConnectLabel: $('#providerConnectLabel'),
   providerDialog: $('#providerDialog'), closeProvider: $('#closeProvider'), providerSelect: $('#providerSelect'),
   providerModel: $('#providerModel'), providerModelHint: $('#providerModelHint'), providerApiKey: $('#providerApiKey'),
+  providerModels: $('#providerModels'), loadModels: $('#loadModels'), loadModelsLabel: $('#loadModelsLabel'),
   rememberProvider: $('#rememberProvider'), providerFeedback: $('#providerFeedback'),
   disconnectProvider: $('#disconnectProvider'), testConnect: $('#testConnect'), testConnectLabel: $('#testConnectLabel')
 };
@@ -115,6 +116,7 @@ let serverConfig = { maxPromptLength: 12000, maxContextMessages: 8 };
 let serverAIConfigured = false;
 let providerState = { provider: 'gemini', model: PROVIDER_OPTIONS.gemini.defaultModel, apiKey: '', remember: false };
 let providerTestInProgress = false;
+let modelListInProgress = false;
 
 function safelyReadStorage(key, fallback) {
   try {
@@ -292,6 +294,70 @@ function openProviderDialog() {
 function closeProviderDialog() {
   if (elements.providerDialog.open) elements.providerDialog.close();
   elements.providerApiKey.value = '';
+}
+
+async function loadProviderModels() {
+  if (modelListInProgress) return;
+  const provider = elements.providerSelect.value;
+  const model = elements.providerModel.value.trim() || providerInfo(provider).defaultModel;
+  const typedKey = elements.providerApiKey.value.trim();
+  const reusableKey = providerState.provider === provider ? providerState.apiKey : '';
+  const apiKey = typedKey || reusableKey;
+  if (!Object.hasOwn(PROVIDER_OPTIONS, provider)) {
+    setProviderFeedback('Choose a supported provider.', 'error');
+    return;
+  }
+  if (!apiKey) {
+    setProviderFeedback('Enter the selected provider API key first. Model discovery sends one authenticated request to that provider.', 'error');
+    elements.providerApiKey.focus();
+    return;
+  }
+  if (apiKey.length < 8 || apiKey.length > 512 || !/^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$/.test(model)) {
+    setProviderFeedback('Check the API key and model ID, then retry.', 'error');
+    return;
+  }
+
+  modelListInProgress = true;
+  elements.loadModels.disabled = true;
+  elements.loadModelsLabel.textContent = 'Fetching…';
+  setProviderFeedback('Fetching model IDs from ' + providerInfo(provider).label + '…', '');
+  try {
+    const response = await fetch(apiUrl('/api/providers/models'), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        'X-NodeAI-Api-Key': apiKey,
+        'X-NodeAI-Provider': provider,
+        'X-NodeAI-Model': model
+      },
+      body: '{}',
+      signal: AbortSignal.timeout(25000)
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || !result.success) {
+      setProviderFeedback(result.error || 'Could not load model IDs for this provider.', 'error');
+      return;
+    }
+    const options = result.models.map((id) => {
+      const option = document.createElement('option');
+      option.value = id;
+      return option;
+    });
+    elements.providerModels.replaceChildren(...options);
+    elements.providerModelHint.textContent = 'Loaded ' + result.total + ' model IDs from ' + providerInfo(provider).label + '. Type in the model field to filter the suggestions.';
+    setProviderFeedback('Fetched ' + result.total + ' model IDs from ' + providerInfo(provider).label + '. Select a suggestion or keep your current model.', 'success');
+    if (typedKey) elements.providerApiKey.value = typedKey;
+  } catch (error) {
+    const message = error.name === 'AbortError' || error.name === 'TimeoutError'
+      ? 'Model discovery timed out. Retry or enter a model ID manually.'
+      : 'Could not reach the NodeAI API. Retry shortly.';
+    setProviderFeedback(message, 'error');
+  } finally {
+    modelListInProgress = false;
+    elements.loadModels.disabled = false;
+    elements.loadModelsLabel.textContent = 'Load models';
+  }
 }
 
 async function connectProvider() {
@@ -1157,9 +1223,11 @@ elements.disconnectProvider.addEventListener('click', disconnectProvider);
 elements.providerSelect.addEventListener('change', () => {
   const info = providerInfo(elements.providerSelect.value);
   elements.providerModel.value = info.defaultModel;
-  elements.providerModelHint.textContent = info.hint;
+  elements.providerModels.replaceChildren();
+  elements.providerModelHint.textContent = info.hint + ' Use Load models to inspect IDs available to your key.';
   setProviderFeedback('Enter a key for ' + info.label + ' and test the selected model.', '');
 });
+elements.loadModels.addEventListener('click', loadProviderModels);
 elements.providerDialog.addEventListener('click', (event) => {
   if (event.target === elements.providerDialog) closeProviderDialog();
 });

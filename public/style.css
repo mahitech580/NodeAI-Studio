@@ -736,3 +736,16 @@ html[data-theme="light"] .result-type.error-result { color: #a52b5e; }
 @media (prefers-reduced-motion: reduce) {
   .provider-live-pulse { animation: none; }
 }
+
+
+/* Live provider model discovery */
+.provider-model-actions { display: flex; align-items: flex-start; gap: 12px; margin-top: 6px; }
+.provider-model-actions .provider-help { flex: 1; min-width: 0; margin-top: 0; }
+.provider-load-models { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 31px; padding: 0 9px; color: var(--text-soft); background: var(--panel); border: 1px solid var(--line-strong); border-radius: 8px; font: 600 9px var(--font); white-space: nowrap; cursor: pointer; }
+.provider-load-models:hover:not(:disabled) { color: var(--text); border-color: var(--violet); }
+.provider-load-models:disabled { opacity: .58; cursor: wait; }
+html[data-theme="light"] .provider-load-models { background: #fff; }
+@media (max-width: 390px) {
+  .provider-model-actions { align-items: stretch; flex-direction: column; gap: 8px; }
+  .provider-load-models { align-self: flex-start; }
+}

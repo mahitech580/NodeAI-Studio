@@ -211,7 +211,7 @@ test('static workspace contains advanced controls and serves source assets', asy
   for (const selector of [
     'id="toneSelect"', 'id="stopGeneration"', 'id="commandDialog"', 'id="savedPrompts"',
     'id="providerDialog"', 'id="providerSelect"', 'id="providerApiKey"', 'id="testConnect"',
-    'id="providerSettings"', 'History stays in this browser'
+    'id="providerSettings"', 'id="loadModels"', 'id="providerModels"', 'History stays in this browser'
   ]) {
     assert.ok(html.includes(selector), selector);
   }
@@ -322,6 +322,65 @@ test('provider test performs a short real completion and never returns the key',
   assert.equal(calls, 1);
   assert.equal(JSON.stringify(body).includes('provider-key-for-tests'), false);
   assert.equal((await jsonPost(base + '/api/providers/test', {})).status, 400);
+});
+
+
+test('model discovery returns validated unique model IDs without exposing the provider key', async (t) => {
+  const secret = 'model-discovery-test-secret';
+  const client = {
+    models: {
+      list: async () => ({
+        data: [
+          { id: 'model-z' },
+          { id: 'model-a' },
+          { id: 'model-a' },
+          { id: 'invalid model id' },
+          { id: 'qwen:3.8-flash' },
+          { name: 'missing id' }
+        ]
+      })
+    }
+  };
+  const used = [];
+  const base = await makeServer(t, {
+    providerClientFactory: (provider, apiKey) => { used.push({ provider, apiKey }); return client; }
+  });
+  const response = await jsonPost(base + '/api/providers/models', {}, {
+    'X-NodeAI-Api-Key': secret,
+    'X-NodeAI-Provider': 'gemini',
+    'X-NodeAI-Model': 'gemini-3.8-flash'
+  });
+  const result = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(result.success, true);
+  assert.equal(result.provider, 'gemini');
+  assert.deepEqual(result.models, ['model-a', 'model-z', 'qwen:3.8-flash']);
+  assert.equal(result.total, 3);
+  assert.equal(used[0].provider, 'gemini');
+  assert.equal(used[0].apiKey, secret);
+  assert.equal(JSON.stringify(result).includes(secret), false);
+  const missing = await jsonPost(base + '/api/providers/models', {});
+  assert.equal(missing.status, 400);
+});
+
+test('model discovery rejects provider errors without logging secrets in response', async (t) => {
+  const secret = 'models-failure-test-key';
+  const base = await makeServer(t, {
+    providerClientFactory: () => ({ models: { list: async () => {
+      const error = new Error('invalid api key ' + secret);
+      error.status = 401;
+      throw error;
+    } } })
+  });
+  const response = await jsonPost(base + '/api/providers/models', {}, {
+    'X-NodeAI-Api-Key': secret,
+    'X-NodeAI-Provider': 'groq',
+    'X-NodeAI-Model': 'openai/gpt-oss-20b'
+  });
+  const result = await response.json();
+  assert.equal(response.status, 401);
+  assert.match(result.error, /API key/i);
+  assert.equal(JSON.stringify(result).includes(secret), false);
 });
 
 test('invalid BYOK provider and model identifiers are rejected before provider calls', async (t) => {
