@@ -1,18 +1,1 @@
-[
-  {
-    "id": 1788276210460,
-    "mode": "chat",
-    "prompt": "Explain JavaScript promises in simple words with an example.",
-    "answer": "DEMO MODE\n\nNodeAI Studio received your question:\n\nExplain JavaScript promises in simple words with an example.\n\nAdd AI_API_KEY to your .env file to enable real AI responses.",
-    "demoMode": true,
-    "createdAt": "2026-09-01T15:23:30.460Z"
-  },
-  {
-    "id": 1788276186536,
-    "mode": "chat",
-    "prompt": "hi",
-    "answer": "DEMO MODE\n\nNodeAI Studio received your question:\n\nhi\n\nAdd AI_API_KEY to your .env file to enable real AI responses.",
-    "demoMode": true,
-    "createdAt": "2026-09-01T15:23:06.536Z"
-  }
-]
+[]
