@@ -9,7 +9,6 @@ permissions:
 
 jobs:
   remediate:
-    if: startsWith(github.event.head_commit.message, 'chore: run npm audit fix')
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
