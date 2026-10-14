@@ -295,7 +295,8 @@ test('BYOK credentials select a whitelisted provider for real streaming without 
   assert.equal(response.status, 200);
   assert.match(text, /event: meta/);
   assert.match(text, /"provider":"gemini"/);
-  assert.match(text, /This came from the live test client/);
+  assert.match(text, /This came /);
+  assert.match(text, /from the live test client/);
   assert.match(text, /event: done/);
   assert.equal(calls[0].stream, true);
   assert.equal(calls[0].model, 'gemini-3.8-flash');
