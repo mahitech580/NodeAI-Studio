@@ -45,6 +45,35 @@ function demoResponse(mode, prompt) {
   return (examples[mode] || examples.chat) + '\n\nRequest received (' + prompt.length + ' characters).';
 }
 
+const MAX_CONTEXT_MESSAGES = 8;
+const MAX_CONTEXT_CHARS = 16000;
+
+function validateContext(context) {
+  if (context === undefined) return { messages: [], error: null };
+  if (!Array.isArray(context)) {
+    return { messages: [], error: 'Context must be an array of previous chat messages.' };
+  }
+  if (context.length > MAX_CONTEXT_MESSAGES) {
+    return { messages: [], error: 'Keep chat context to the most recent ' + MAX_CONTEXT_MESSAGES + ' messages.' };
+  }
+
+  let totalCharacters = 0;
+  const messages = [];
+  for (const item of context) {
+    if (!item || !['user', 'assistant'].includes(item.role) ||
+        typeof item.content !== 'string' || !item.content.trim()) {
+      return { messages: [], error: 'Each context item must have a user or assistant role and non-empty text.' };
+    }
+    const content = item.content.trim();
+    totalCharacters += content.length;
+    if (content.length > MAX_PROMPT_LENGTH || totalCharacters > MAX_CONTEXT_CHARS) {
+      return { messages: [], error: 'Chat context is too large. Start a new workspace or shorten earlier messages.' };
+    }
+    messages.push({ role: item.role, content });
+  }
+  return { messages, error: null };
+}
+
 function makeRateLimiter(options = {}) {
   const windowMs = options.windowMs || 60000;
   const max = options.max || 20;
@@ -206,6 +235,12 @@ function createApp(options = {}) {
         });
       }
 
+      const contextResult = validateContext(mode === 'chat' ? req.body?.context : undefined);
+      if (contextResult.error) {
+        return res.status(400).json({ success: false, error: contextResult.error });
+      }
+      const context = contextResult.messages;
+
       let answer;
       if (!ai) {
         answer = demoResponse(mode, prompt);
@@ -214,6 +249,7 @@ function createApp(options = {}) {
           model: process.env.AI_MODEL || 'gpt-4o-mini',
           messages: [
             { role: 'system', content: getSystemPrompt(mode) },
+            ...context,
             { role: 'user', content: prompt }
           ],
           temperature: 0.2,
@@ -234,6 +270,7 @@ function createApp(options = {}) {
         demoMode: !ai,
         model: ai ? (process.env.AI_MODEL || 'gpt-4o-mini') : null,
         durationMs: Date.now() - startedAt,
+        contextMessageCount: context.length,
         createdAt: new Date().toISOString()
       };
 
@@ -343,5 +380,8 @@ module.exports = {
   getSystemPrompt,
   makeRateLimiter,
   MAX_PROMPT_LENGTH,
-  HISTORY_LIMIT
+  HISTORY_LIMIT,
+  MAX_CONTEXT_MESSAGES,
+  MAX_CONTEXT_CHARS,
+  validateContext
 };
