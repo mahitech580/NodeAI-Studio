@@ -1,9 +1,9 @@
 'use strict';
 
 const $ = (selector, root = document) => root.querySelector(selector);
-const $ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
+const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
 
-const API_BASE_URL = String(window.NODEAI_CONFIG?.apiBaseUrl || '').trim().replace(/\\/+$/, '');
+const API_BASE_URL = String(window.NODEAI_CONFIG?.apiBaseUrl || '').trim().replace(/\/+$/, '');
 function apiUrl(path) {
   return API_BASE_URL ? API_BASE_URL + path : path;
 }
