@@ -27,10 +27,10 @@ async function makeServer(t, options = {}) {
   return 'http://127.0.0.1:' + server.address().port;
 }
 
-function jsonPost(url, body) {
+function jsonPost(url, body, extraHeaders = {}) {
   return fetch(url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...extraHeaders },
     body: JSON.stringify(body)
   });
 }
@@ -191,6 +191,41 @@ test('malformed JSON returns a structured 400 response with request correlation'
   assert.equal(response.status, 400);
   assert.match(body.error, /valid JSON/i);
   assert.equal(body.requestId, response.headers.get('x-request-id'));
+});
+
+test('history is isolated by browser session and deletion affects only that session', async (t) => {
+  const base = await makeServer(t);
+  const sessionA = '11111111-1111-4111-8111-111111111111';
+  const sessionB = '22222222-2222-4222-8222-222222222222';
+
+  const a = await jsonPost(base + '/api/ai', { mode: 'chat', prompt: 'session A private history' }, {
+    'X-NodeAI-Session': sessionA
+  });
+  const b = await jsonPost(base + '/api/ai', { mode: 'chat', prompt: 'session B separate history' }, {
+    'X-NodeAI-Session': sessionB
+  });
+  assert.equal(a.status, 200);
+  assert.equal(b.status, 200);
+
+  const historyA = await fetch(base + '/api/history', { headers: { 'X-NodeAI-Session': sessionA } });
+  const responseA = await historyA.json();
+  assert.equal(responseA.total, 1);
+  assert.equal(responseA.history[0].prompt, 'session A private history');
+  assert.equal(Object.hasOwn(responseA.history[0], 'sessionScope'), false);
+
+  const cleared = await fetch(base + '/api/history', {
+    method: 'DELETE',
+    headers: { 'X-NodeAI-Session': sessionA }
+  });
+  assert.equal(cleared.status, 200);
+  assert.equal((await (await fetch(base + '/api/history', {
+    headers: { 'X-NodeAI-Session': sessionA }
+  })).json()).total, 0);
+  const remainingB = await (await fetch(base + '/api/history', {
+    headers: { 'X-NodeAI-Session': sessionB }
+  })).json();
+  assert.equal(remainingB.total, 1);
+  assert.equal(remainingB.history[0].prompt, 'session B separate history');
 });
 
 test('unknown API routes return structured JSON errors', async (t) => {
