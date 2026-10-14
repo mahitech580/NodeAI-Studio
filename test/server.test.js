@@ -185,6 +185,10 @@ test('static workspace contains advanced controls and serves source assets', asy
   for (const asset of ['/script.js', '/style.css', '/config.js']) {
     assert.equal((await fetch(base + asset)).status, 200, asset);
   }
+  const script = await (await fetch(base + '/script.js')).text();
+  assert.match(script, /nodeai-session-history/);
+  assert.match(script, /recordLocalHistory/);
+  assert.doesNotMatch(script, /fetch\(apiUrl\('\/api\/history/);
 });
 
 test('rate limiting returns retry guidance after the request budget is reached', async (t) => {
