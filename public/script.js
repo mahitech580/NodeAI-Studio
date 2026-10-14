@@ -13,6 +13,27 @@ function apiUrl(path) {
   return API_BASE_URL ? API_BASE_URL + path : path;
 }
 
+const BROWSER_SESSION_KEY = 'nodeai.studio.sessionId.v1';
+
+function browserSessionId() {
+  let id = safelyReadStorage(BROWSER_SESSION_KEY, '');
+  const valid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  if (!valid.test(id)) {
+    id = globalThis.crypto?.randomUUID
+      ? globalThis.crypto.randomUUID()
+      : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (character) => {
+        const random = Math.floor(Math.random() * 16);
+        return (character === 'x' ? random : (random & 0x3) | 0x8).toString(16);
+      });
+    safelyWriteStorage(BROWSER_SESSION_KEY, id);
+  }
+  return id;
+}
+
+function apiHeaders(headers = {}) {
+  return { ...headers, 'X-NodeAI-Session': browserSessionId() };
+}
+
 const elements = {
   modeButtons: $$('.mode-button'), prompt: $('#prompt'), charCount: $('#charCount'),
   savePrompt: $('#savePrompt'), savedPromptCount: $('#savedPromptCount'), savedPrompts: $('#savedPrompts'),
@@ -377,7 +398,7 @@ function restoreSession(item) {
 
 async function loadHistory() {
   try {
-    const response = await fetch(apiUrl('/api/history?limit=50'), { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(8000) });
+    const response = await fetch(apiUrl('/api/history?limit=50'), { headers: apiHeaders({ Accept: 'application/json' }), signal: AbortSignal.timeout(8000) });
     if (!response.ok) throw new Error('History is unavailable');
     const data = await response.json();
     historyCache = Array.isArray(data.history) ? data.history : [];
@@ -410,7 +431,7 @@ async function checkServer() {
 
 async function fetchConfig() {
   try {
-    const response = await fetch(apiUrl('/api/config'), { signal: AbortSignal.timeout(8000) });
+    const response = await fetch(apiUrl('/api/config'), { headers: apiHeaders(), signal: AbortSignal.timeout(8000) });
     if (!response.ok) return;
     const config = await response.json();
     if (!config.success) return;
@@ -496,7 +517,7 @@ async function generateResponse() {
     const context = currentMode === 'chat' ? conversationTurns.slice(-serverConfig.maxContextMessages) : [];
     const response = await fetch(apiUrl('/api/ai/stream'), {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream, application/json' },
+      headers: apiHeaders({ 'Content-Type': 'application/json', Accept: 'text/event-stream, application/json' }),
       body: JSON.stringify({ mode: currentMode, tone: elements.toneSelect.value, prompt, context }),
       signal: activeController.signal
     });
@@ -707,7 +728,7 @@ async function clearHistory() {
   }
   if (!window.confirm('Clear all saved NodeAI Studio sessions from this server? This cannot be undone.')) return;
   try {
-    const response = await fetch(apiUrl('/api/history'), { method: 'DELETE' });
+    const response = await fetch(apiUrl('/api/history'), { method: 'DELETE', headers: apiHeaders() });
     const data = await response.json();
     if (!response.ok || !data.success) throw new Error(data.error || 'Could not clear history');
     historyCache = [];
