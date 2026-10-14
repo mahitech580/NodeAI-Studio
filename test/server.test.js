@@ -133,3 +133,36 @@ test('unknown API routes return structured 404 responses', async (t) => {
   assert.equal(response.status, 404);
   assert.equal(body.success, false);
 });
+
+test('the browser workspace and frontend assets are served by Express', async (t) => {
+  const base = await makeServer(t);
+  const pageResponse = await fetch(base + '/');
+  const html = await pageResponse.text();
+
+  assert.equal(pageResponse.status, 200);
+  assert.match(pageResponse.headers.get('content-type') || '', /text\/html/i);
+  assert.match(html, /Think clearly/);
+  assert.match(html, /style\.css/);
+  assert.match(html, /script\.js/);
+
+  const scriptResponse = await fetch(base + '/script.js');
+  assert.equal(scriptResponse.status, 200);
+  assert.match(await scriptResponse.text(), /generateResponse/);
+});
+
+test('AI endpoint applies its configured request limit', async (t) => {
+  const base = await makeServer(t, { rateLimitMax: 1 });
+  const request = () => fetch(base + '/api/ai', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ mode: 'chat', prompt: 'hello' })
+  });
+
+  assert.equal((await request()).status, 200);
+  const limited = await request();
+  const body = await limited.json();
+  assert.equal(limited.status, 429);
+  assert.equal(body.success, false);
+  assert.match(body.error, /too many requests/i);
+});
+
