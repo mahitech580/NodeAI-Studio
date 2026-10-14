@@ -81,16 +81,6 @@ function getSystemPrompt(mode, tone = 'balanced') {
   return (prompts[mode] || prompts.chat) + '\n\nResponse style: ' + (tones[tone] || tones.balanced);
 }
 
-function demoResponse(mode, prompt) {
-  const examples = {
-    chat: 'Demo mode is active. Your request reached NodeAI Studio, but no AI provider is configured. Add AI_API_KEY to the server environment to enable live model responses.',
-    code: 'Demo mode is active. Configure AI_API_KEY for a solution tailored to your request.\n\nExample starter:\n\nconst express = require("express");\nconst app = express();\napp.use(express.json());\n\napp.get("/api/health", (req, res) => {\n  res.json({ success: true });\n});\n\napp.listen(3000);',
-    debug: 'Demo mode is active, so a language model did not analyze your specific issue.\n\nDebugging checklist:\n1. Capture the complete error and stack trace.\n2. Reproduce the issue with the smallest input.\n3. Inspect types, asynchronous boundaries, and configuration.\n4. Add a regression test after the fix.',
-    sql: 'Demo mode is active. Configure AI_API_KEY for a query based on your schema.\n\nExample query:\n\nSELECT customer_id, SUM(total_amount) AS total_revenue\nFROM orders\nGROUP BY customer_id\nORDER BY total_revenue DESC\nLIMIT 10;'
-  };
-  return (examples[mode] || examples.chat) + '\n\nRequest received (' + prompt.length + ' characters).';
-}
-
 function validateContext(context) {
   if (context === undefined) return { messages: [], error: null };
   if (!Array.isArray(context)) return { messages: [], error: 'Context must be an array of previous chat messages.' };
@@ -491,7 +481,7 @@ if (require.main === module) {
 }
 
 module.exports = {
-  createApp, demoResponse, getSystemPrompt, makeRateLimiter, validateContext, validateRequest, buildMessages,
+  createApp, getSystemPrompt, makeRateLimiter, validateContext, validateRequest, buildMessages,
   createProviderClient, readBrowserProviderConfig, resolveRequestAI, providerErrorStatus, publicProviderError,
   PROVIDERS, MAX_PROMPT_LENGTH, MAX_CONTEXT_MESSAGES, MAX_CONTEXT_CHARS, HISTORY_LIMIT
 };
