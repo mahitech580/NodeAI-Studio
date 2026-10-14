@@ -88,4 +88,4 @@ Conversation history is file-backed for this compact project. Ephemeral hosting 
 
 ## License
 
-MIT. See LICENSE if a license file is added to the repository.
+MIT. See LICENSE.
