@@ -168,6 +168,31 @@ test('rate limiting returns retry guidance after the request budget is reached',
   assert.match((await limited.json()).error, /too many requests/i);
 });
 
+
+test('readiness reports whether the history store is readable and writable', async (t) => {
+  const base = await makeServer(t);
+  const response = await fetch(base + '/api/ready');
+  const body = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(body.success, true);
+  assert.equal(body.status, 'ready');
+  assert.equal(body.dependencies.historyStorage, 'available');
+  assert.match(response.headers.get('x-request-id') || '', /^[0-9a-f-]{36}$/i);
+});
+
+test('malformed JSON returns a structured 400 response with request correlation', async (t) => {
+  const base = await makeServer(t);
+  const response = await fetch(base + '/api/ai', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: '{"mode":"chat","prompt":'
+  });
+  const body = await response.json();
+  assert.equal(response.status, 400);
+  assert.match(body.error, /valid JSON/i);
+  assert.equal(body.requestId, response.headers.get('x-request-id'));
+});
+
 test('unknown API routes return structured JSON errors', async (t) => {
   const base = await makeServer(t);
   const response = await fetch(base + '/api/not-a-route');
