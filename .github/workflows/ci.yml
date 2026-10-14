@@ -33,3 +33,9 @@ jobs:
         run: npm run check
       - name: Run API and streaming regression tests
         run: npm test
+
+      - name: Report dependency audit findings
+        shell: bash
+        run: |
+          npm audit --json > npm-audit-report.json || true
+          node -e "const r=require('./npm-audit-report.json'); const findings=Object.entries(r.vulnerabilities||{}).map(([name,v])=>({name,severity:v.severity,range:v.range,fixAvailable:v.fixAvailable,via:(v.via||[]).map(a=>typeof a==='string'?a:{name:a.name,title:a.title,url:a.url,range:a.range})})); console.log(JSON.stringify({summary:r.metadata?.vulnerabilities,findings},null,2))"
