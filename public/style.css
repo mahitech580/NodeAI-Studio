@@ -340,3 +340,26 @@ html[data-theme="light"] .art-core { background: linear-gradient(140deg, rgba(13
 @media (max-width: 390px) {
   .attach-file { font-size: 9px; padding-inline: 0; }
 }
+
+
+/* Browser-local saved prompt library */
+.saved-prompt-section { flex: 0 0 auto; margin-top: 7px; border-top: 1px solid var(--line); }
+.saved-prompt-section summary { display: flex; align-items: center; justify-content: space-between; padding: 11px 8px; color: var(--muted); cursor: pointer; list-style: none; font-size: 11px; font-weight: 600; }
+.saved-prompt-section summary::-webkit-details-marker { display: none; }
+.saved-prompt-section summary::before { content: "+"; display: inline-grid; place-items: center; width: 17px; margin-right: 7px; color: var(--violet); font-size: 14px; }
+.saved-prompt-section[open] summary::before { content: "−"; }
+.saved-prompt-section summary > span:first-child { margin-right: auto; }
+.saved-prompt-list { display: grid; gap: 4px; max-height: 155px; overflow-y: auto; padding: 0 2px 8px; }
+.saved-prompts-empty { padding: 8px; color: var(--subtle); font-size: 10px; line-height: 1.6; }
+.saved-prompt-row { display: flex; align-items: stretch; min-width: 0; border: 1px solid transparent; border-radius: 8px; }
+.saved-prompt-row:hover { background: rgba(138,125,201,.055); border-color: var(--line); }
+.saved-prompt-open { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: 4px; padding: 8px; border: 0; background: transparent; text-align: left; cursor: pointer; }
+.saved-prompt-mode { font: 9px var(--mono); color: var(--violet); }
+.saved-prompt-text { color: var(--text-soft); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 10px; }
+.saved-prompt-remove { width: 28px; flex: 0 0 auto; color: var(--subtle); border: 0; background: transparent; cursor: pointer; font-size: 16px; }
+.saved-prompt-remove:hover { color: var(--pink); }
+.save-prompt-inline { padding: 2px 6px; color: var(--muted); border: 1px solid var(--line); background: transparent; border-radius: 5px; font-size: 9px; white-space: nowrap; cursor: pointer; }
+.save-prompt-inline:hover { color: var(--violet); border-color: var(--line-strong); }
+html[data-theme="light"] .saved-prompt-text { color: #4f4a68; }
+@media (max-width: 920px) { .saved-prompt-section { display: none; } }
+@media (max-width: 700px) { .save-prompt-inline { font-size: 8px; padding-inline: 4px; } }

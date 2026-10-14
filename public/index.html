@@ -65,7 +65,14 @@
         <button id="clearHistory" class="clear-history" type="button">Clear conversation history</button>
       </section>
 
-      <div class="sidebar-bottom">
+<details class="saved-prompt-section">
+        <summary><span>Saved prompts</span><span id="savedPromptCount" class="count-pill">0</span></summary>
+        <div id="savedPrompts" class="saved-prompt-list">
+          <div class="saved-prompts-empty">Save a useful prompt to reuse it later.</div>
+        </div>
+      </details>
+
+            <div class="sidebar-bottom">
         <div class="privacy-note"><span class="privacy-dot"></span><span>Private by default</span></div>
         <div class="sidebar-footer"><span class="footer-mark">N.</span><span>Built for the next idea.</span><span class="version">v2.0</span></div>
       </div>
@@ -126,7 +133,7 @@
             <div class="prompt-editor">
               <label class="sr-only" for="prompt">Describe what you want help with</label>
               <textarea id="prompt" maxlength="12000" placeholder="What are you working on today?"></textarea>
-              <div class="editor-bottom"><span><span class="keyboard-symbol">↵</span> <kbd>Ctrl</kbd> + <kbd>Enter</kbd> to generate</span><span id="charCount">0 / 12,000</span></div>
+              <div class="editor-bottom"><span><span class="keyboard-symbol">↵</span> <kbd>Ctrl</kbd> + <kbd>Enter</kbd> to generate</span><button id="savePrompt" class="save-prompt-inline" type="button" title="Save this prompt in this browser">☆ Save prompt</button><span id="charCount">0 / 12,000</span></div>
             </div>
             <div class="prompt-suggestions"><span class="suggestion-label">TRY A STARTER</span><div id="promptChips" class="prompt-chips">
               <button class="prompt-chip" type="button" data-mode="chat" data-prompt="Explain the JavaScript event loop with a practical example.">Explain the event loop <span>↗</span></button>

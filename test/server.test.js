@@ -230,3 +230,14 @@ test('workspace exposes local text attachment and context controls', async (t) =
   assert.match(html, /id="contextIndicator"/);
 });
 
+test('workspace exposes a reusable saved-prompt library', async (t) => {
+  const base = await makeServer(t);
+  const response = await fetch(base + '/');
+  const html = await response.text();
+
+  assert.equal(response.status, 200);
+  assert.match(html, /id="savePrompt"/);
+  assert.match(html, /id="savedPromptCount"/);
+  assert.match(html, /id="savedPrompts"/);
+});
+

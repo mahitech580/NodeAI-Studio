@@ -11,6 +11,7 @@ A full-stack AI workspace for day-to-day software development. Use one responsiv
 - **Responsive workspace:** dark/light themes, animated ambient details, mobile workflow navigation, keyboard shortcuts, prompt starters, character count, and accessible focus states.
 - **History:** the latest 50 prompts and responses are stored on the server; search and restore sessions, filter results, or clear history.
 - **Copy and export:** copy an answer or download a Markdown file containing the prompt and response.
+- **Saved prompt library:** save up to 100 reusable prompts in browser-local storage, separated by workflow; load or remove them without sending the library to the server.
 - **Safer defaults:** request size and prompt length limits, per-IP AI request throttling, server-only credentials, security headers, bounded history, atomic file writes, and consistent JSON errors.
 - **Regression checks:** API tests cover health/config responses, validation, demo generation, saved history, search, deletion, and unknown routes.
 

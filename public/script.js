@@ -7,6 +7,9 @@ const elements = {
   modeButtons: $$('.mode-button'),
   prompt: $('#prompt'),
   charCount: $('#charCount'),
+  savePrompt: $('#savePrompt'),
+  savedPromptCount: $('#savedPromptCount'),
+  savedPrompts: $('#savedPrompts'),
   promptChips: $('#promptChips'),
   generate: $('#generate'),
   stopGeneration: $('#stopGeneration'),
@@ -96,6 +99,14 @@ let toastTimer = null;
 let busy = false;
 let requestController = null;
 let conversationTurns = [];
+let savedPrompts = (() => {
+  try {
+    const parsed = JSON.parse(safelyReadStorage('nodeai-saved-prompts', '[]'));
+    return Array.isArray(parsed) ? parsed.filter((item) => item && typeof item.prompt === 'string' && MODE_CONFIG[item.mode]) : [];
+  } catch {
+    return [];
+  }
+})();
 
 function safelyReadStorage(key, fallback) {
   try {
@@ -249,6 +260,89 @@ function formatDuration(duration) {
 function updateSessionMetrics() {
   elements.historyCount.textContent = String(historyCache.length);
   elements.sessionMetric.textContent = String(historyCache.length).padStart(2, '0');
+}
+
+function persistSavedPrompts() {
+  safelyWriteStorage('nodeai-saved-prompts', JSON.stringify(savedPrompts));
+}
+
+function renderSavedPrompts() {
+  elements.savedPromptCount.textContent = String(savedPrompts.length);
+  elements.savedPrompts.replaceChildren();
+  if (!savedPrompts.length) {
+    const empty = document.createElement('div');
+    empty.className = 'saved-prompts-empty';
+    empty.textContent = 'Save a useful prompt to reuse it later.';
+    elements.savedPrompts.append(empty);
+    return;
+  }
+
+  savedPrompts.slice(0, 30).forEach((item) => {
+    const row = document.createElement('div');
+    row.className = 'saved-prompt-row';
+    const open = document.createElement('button');
+    open.type = 'button';
+    open.className = 'saved-prompt-open';
+    open.title = item.prompt;
+    const mode = document.createElement('span');
+    mode.className = 'saved-prompt-mode mode-' + item.mode;
+    mode.textContent = item.mode.toUpperCase();
+    const prompt = document.createElement('span');
+    prompt.className = 'saved-prompt-text';
+    prompt.textContent = item.prompt.replace(/\\s+/g, ' ');
+    open.append(mode, prompt);
+    open.addEventListener('click', () => {
+      updateMode(item.mode);
+      conversationTurns = [];
+      updateContextIndicator();
+      elements.prompt.value = item.prompt;
+      updatePromptCount();
+      showEmptyResponse();
+      elements.prompt.focus();
+      showToast('Saved prompt loaded');
+    });
+
+    const remove = document.createElement('button');
+    remove.type = 'button';
+    remove.className = 'saved-prompt-remove';
+    remove.textContent = '×';
+    remove.setAttribute('aria-label', 'Remove saved prompt');
+    remove.title = 'Remove saved prompt';
+    remove.addEventListener('click', () => {
+      savedPrompts = savedPrompts.filter((saved) => saved.id !== item.id);
+      persistSavedPrompts();
+      renderSavedPrompts();
+      showToast('Saved prompt removed');
+    });
+    row.append(open, remove);
+    elements.savedPrompts.append(row);
+  });
+}
+
+function saveCurrentPrompt() {
+  const prompt = elements.prompt.value.trim();
+  if (!prompt) {
+    showToast('Write a prompt before saving it', 'warning');
+    elements.prompt.focus();
+    return;
+  }
+  if (savedPrompts.some((item) => item.mode === currentMode && item.prompt === prompt)) {
+    showToast('This prompt is already saved', 'warning');
+    return;
+  }
+  savedPrompts.unshift({
+    id: (window.crypto && typeof window.crypto.randomUUID === 'function')
+      ? window.crypto.randomUUID()
+      : String(Date.now()) + '-' + Math.random().toString(36).slice(2, 8),
+    mode: currentMode,
+    prompt,
+    savedAt: new Date().toISOString()
+  });
+  savedPrompts = savedPrompts.slice(0, 100);
+  persistSavedPrompts();
+  renderSavedPrompts();
+  $('.saved-prompt-section').open = true;
+  showToast('Prompt saved in this browser');
 }
 
 function renderHistory(items = historyCache) {
@@ -566,6 +660,7 @@ async function clearHistory() {
 
 elements.modeButtons.forEach((button) => button.addEventListener('click', () => updateMode(button.dataset.mode)));
 elements.prompt.addEventListener('input', updatePromptCount);
+elements.savePrompt.addEventListener('click', saveCurrentPrompt);
 elements.generate.addEventListener('click', generateResponse);
 elements.stopGeneration.addEventListener('click', () => {
   if (requestController) requestController.abort();
@@ -613,6 +708,7 @@ document.addEventListener('keydown', (event) => {
 setTheme(safelyReadStorage('nodeai-theme', 'dark'));
 updateMode('chat');
 updateContextIndicator();
+renderSavedPrompts();
 showEmptyResponse();
 fetchConfig();
 loadHistory();
