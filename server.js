@@ -91,7 +91,22 @@ function createApp(options = {}) {
   let historyQueue = Promise.resolve();
 
   app.disable('x-powered-by');
-  app.use(helmet());
+  app.use(helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        baseUri: ["'self'"],
+        connectSrc: ["'self'"],
+        fontSrc: ["'self'", 'https://fonts.gstatic.com'],
+        formAction: ["'self'"],
+        frameAncestors: ["'none'"],
+        imgSrc: ["'self'", 'data:'],
+        objectSrc: ["'none'"],
+        scriptSrc: ["'self'"],
+        styleSrc: ["'self'", 'https://fonts.googleapis.com']
+      }
+    }
+  }));
   const allowedOrigins = (process.env.CORS_ORIGIN || '')
     .split(',')
     .map((origin) => origin.trim())
