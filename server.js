@@ -261,6 +261,63 @@ function createApp(options = {}) {
     });
   });
 
+  app.post('/api/providers/models', aiRateLimit, async (req, res) => {
+    const requestId = req.requestId || crypto.randomUUID();
+    const supplied = readBrowserProviderConfig(req);
+    if (supplied.error) return res.status(400).json({ success: false, error: supplied.error, requestId });
+
+    let client;
+    let selectedProvider;
+    let selectedModel;
+    if (supplied.config) {
+      ({ provider: selectedProvider, model: selectedModel } = supplied.config);
+      try { client = providerClientFactory(selectedProvider, supplied.config.apiKey); }
+      catch { return res.status(400).json({ success: false, error: 'Could not initialize the selected provider.', requestId }); }
+    } else if (ai) {
+      client = ai;
+      selectedProvider = serverProvider;
+      selectedModel = model;
+    } else {
+      return res.status(400).json({ success: false, error: 'Connect a provider key before loading available models.', requestId });
+    }
+
+    try {
+      if (!client.models || typeof client.models.list !== 'function') {
+        return res.status(501).json({
+          success: false,
+          error: 'This provider client does not support model discovery. Enter a model ID manually.',
+          requestId
+        });
+      }
+      const result = await client.models.list();
+      const models = [...new Set((Array.isArray(result?.data) ? result.data : [])
+        .map((item) => typeof item?.id === 'string' ? item.id.trim() : '')
+        .filter((id) => MODEL_ID_PATTERN.test(id)))]
+        .sort((a, b) => a.localeCompare(b))
+        .slice(0, 250);
+      if (!models.length) {
+        return res.status(502).json({
+          success: false,
+          error: 'The provider returned no compatible chat model IDs. You can still enter a model ID manually.',
+          requestId
+        });
+      }
+      res.set('Cache-Control', 'no-store');
+      return res.json({
+        success: true,
+        provider: selectedProvider,
+        currentModel: selectedModel,
+        models,
+        total: models.length,
+        requestId
+      });
+    } catch (error) {
+      const status = providerErrorStatus(error);
+      console.error('[NodeAI] model list ' + requestId + ' failed: provider=' + selectedProvider + ' status=' + status);
+      return res.status(status).json({ success: false, error: publicProviderError(status), requestId });
+    }
+  });
+
   app.post('/api/providers/test', aiRateLimit, async (req, res) => {
     const requestId = req.requestId || crypto.randomUUID();
     const supplied = readBrowserProviderConfig(req);
