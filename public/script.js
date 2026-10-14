@@ -17,7 +17,16 @@ function apiUrl(path) {
 }
 
 const elements = {
-  modeButtons: $$('.mode-button'), prompt: $('#prompt'), charCount: $('#charCount'),
+  modeButtons: $('.mode-button'), prompt: $('#prompt'), charCount: $('#charCount'),
+  heroEyebrowText: $('#heroEyebrowText'), heroTitleLead: $('#heroTitleLead'), heroTitleAccent: $('#heroTitleAccent'),
+  heroDescription: $('#heroDescription'), composerTitle: $('#composerTitle'), composerSubtitle: $('#composerSubtitle'),
+  promptLabel: $('#promptLabel'), responseTitle: $('#responseTitle'), responseSubtitle: $('#responseSubtitle'),
+  emptyTitle: $('#emptyTitle'), emptyDescription: $('#emptyDescription'), emptyTip: $('#emptyTip'),
+  outputTag: $('#outputTag'), modeSettingsCards: $('[data-settings]'),
+  codeLanguage: $('#codeLanguage'), codeFramework: $('#codeFramework'), codeDeliverable: $('#codeDeliverable'),
+  codeIncludeTests: $('#codeIncludeTests'), debugRuntime: $('#debugRuntime'), debugCategory: $('#debugCategory'),
+  debugExpected: $('#debugExpected'), debugObserved: $('#debugObserved'),
+  sqlDialect: $('#sqlDialect'), sqlPriority: $('#sqlPriority'), sqlSchema: $('#sqlSchema'),
   savePrompt: $('#savePrompt'), savedPromptCount: $('#savedPromptCount'), savedPrompts: $('#savedPrompts'),
   promptChips: $('#promptChips'), toneSelect: $('#toneSelect'), generate: $('#generate'),
   stopGeneration: $('#stopGeneration'), contextIndicator: $('#contextIndicator'), generateLabel: $('#generateLabel'),
@@ -35,14 +44,50 @@ const elements = {
 };
 
 const MODE_CONFIG = {
-  chat: { title: 'AI Chat', badge: 'CHAT', placeholder: 'What are you working on today?',
-    chips: [['Explain the event loop', 'Explain the JavaScript event loop with a practical example.'], ['Review a function', 'Review this function for readability, edge cases, and performance:']] },
-  code: { title: 'Code Generator', badge: 'CODE', placeholder: 'Describe the feature, language, inputs, and expected output…',
-    chips: [['Create a REST endpoint', 'Build an Express REST endpoint with validation and consistent JSON errors.'], ['Refactor this code', 'Refactor the following code for readability, testability, and maintainability:']] },
-  debug: { title: 'AI Debugger', badge: 'DEBUG', placeholder: 'Paste relevant code, the exact error, and expected behavior…',
-    chips: [['Analyze a stack trace', 'Explain the likely root cause of this error and show a minimal fix:'], ['Find edge cases', 'Review this code for edge cases, async bugs, and incorrect assumptions:']] },
-  sql: { title: 'SQL Assistant', badge: 'SQL', placeholder: 'Describe your tables, columns, SQL dialect, and desired result…',
-    chips: [['Aggregate by customer', 'Find the top 10 customers by total revenue. Tables: customers(id, name), orders(customer_id, total_amount).'], ['Explain a query', 'Explain this SQL query, its joins, aggregation, and performance considerations:']] }
+  chat: {
+    title: 'AI Chat', badge: 'CHAT', placeholder: 'What are you working on today?',
+    promptLabel: 'Ask your engineering question',
+    heroEyebrow: 'CONVERSATION STUDIO', heroLead: 'Think out loud.', heroAccent: 'Build together.',
+    heroDescription: 'Keep a thread of thought moving with context-aware engineering conversations and practical explanations.',
+    composerTitle: 'Your message', composerSubtitle: 'Ask naturally. Follow up without starting over.',
+    responseTitle: 'Conversation', responseSubtitle: 'A focused space for ideas and follow-up questions.',
+    emptyTitle: 'Start a conversation.', emptyDescription: 'Ask a question, share a tricky concept, or think through a design choice step by step.',
+    emptyTip: 'Try a conversation starter', outputTag: 'NODEAI / CHAT',
+    chips: [['Explain the event loop', 'Explain the JavaScript event loop with a practical example.'], ['Review a function', 'Review this function for readability, edge cases, and performance:']]
+  },
+  code: {
+    title: 'Code Generator', badge: 'CODE', placeholder: 'Describe the feature, inputs, edge cases, and expected output…',
+    promptLabel: 'Describe the code you want built',
+    heroEyebrow: 'IMPLEMENTATION WORKSPACE', heroLead: 'From spec.', heroAccent: 'To solid code.',
+    heroDescription: 'Shape a real implementation with language, framework, deliverable, and test preferences before generating.',
+    composerTitle: 'Implementation brief', composerSubtitle: 'Set your stack, then describe what the code must do.',
+    responseTitle: 'Generated implementation', responseSubtitle: 'Review structure, assumptions, and test guidance before using the code.',
+    emptyTitle: 'Ready to build.', emptyDescription: 'Choose your language and deliverable, then describe the behavior, inputs, constraints, and edge cases.',
+    emptyTip: 'Start from a code recipe', outputTag: 'NODEAI / BUILD',
+    chips: [['Create a REST endpoint', 'Build an endpoint with request validation, clear JSON errors, and a maintainable structure.'], ['Refactor this code', 'Refactor the following code for readability, testability, and maintainability:']]
+  },
+  debug: {
+    title: 'AI Debugger', badge: 'DEBUG', placeholder: 'Paste the smallest relevant code sample, stack trace, or reproducible behavior…',
+    promptLabel: 'Paste the code, trace, or debugging context',
+    heroEyebrow: 'INVESTIGATION WORKSPACE', heroLead: 'Trace the fault.', heroAccent: 'Find the fix.',
+    heroDescription: 'Turn a vague failure into a testable diagnosis with runtime details, expected behavior, observed behavior, and evidence.',
+    composerTitle: 'Bug report', composerSubtitle: 'Add the evidence and define what the correct behavior should be.',
+    responseTitle: 'Debug analysis', responseSubtitle: 'Look for root cause, confidence, and a safe way to verify the fix.',
+    emptyTitle: 'Let’s investigate.', emptyDescription: 'Share the error or code, describe what you expected, and record what actually happened. Secrets should be removed first.',
+    emptyTip: 'Start a debugging report', outputTag: 'NODEAI / TRIAGE',
+    chips: [['Analyze a stack trace', 'Explain the likely root cause of this error and show a minimal fix:'], ['Find edge cases', 'Review this code for edge cases, async bugs, and incorrect assumptions:']]
+  },
+  sql: {
+    title: 'SQL Assistant', badge: 'SQL', placeholder: 'Describe the result you need, the tables involved, and any query constraints…',
+    promptLabel: 'Describe the SQL result you need',
+    heroEyebrow: 'QUERY WORKSPACE', heroLead: 'Ask your data.', heroAccent: 'Precisely.',
+    heroDescription: 'Draft dialect-aware queries with schema context and a chosen priority, from clear reporting SQL to performance investigation.',
+    composerTitle: 'Query objective', composerSubtitle: 'Set the database dialect and schema, then explain the result you need.',
+    responseTitle: 'Query assistant', responseSubtitle: 'Inspect the query, assumptions, joins, and performance notes.',
+    emptyTitle: 'Your query starts here.', emptyDescription: 'Describe the rows you need and add table definitions. Generated SQL is a draft; verify it against your real schema before running it.',
+    emptyTip: 'Start with a SQL pattern', outputTag: 'NODEAI / QUERY',
+    chips: [['Aggregate by customer', 'Find the top 10 customers by total revenue and explain the grouping and joins.'], ['Explain a query', 'Explain this SQL query, its joins, aggregation, and performance considerations:']]
+  }
 };
 
 let currentMode = 'chat';
@@ -177,7 +222,23 @@ function updateMode(mode) {
   const dot = document.createElement('span');
   dot.className = 'badge-dot';
   elements.modeBadge.append(dot, document.createTextNode(' ' + config.badge));
+  document.body.dataset.mode = mode;
+  elements.heroEyebrowText.textContent = config.heroEyebrow;
+  elements.heroTitleLead.textContent = config.heroLead;
+  elements.heroTitleAccent.textContent = config.heroAccent;
+  elements.heroDescription.textContent = config.heroDescription;
+  elements.composerTitle.textContent = config.composerTitle;
+  elements.composerSubtitle.textContent = config.composerSubtitle;
+  elements.promptLabel.textContent = config.promptLabel;
+  elements.prompt.setAttribute('aria-label', config.promptLabel);
   elements.prompt.placeholder = config.placeholder;
+  elements.responseTitle.textContent = config.responseTitle;
+  elements.responseSubtitle.textContent = config.responseSubtitle;
+  elements.emptyTitle.textContent = config.emptyTitle;
+  elements.emptyDescription.textContent = config.emptyDescription;
+  elements.emptyTip.textContent = '↳ ' + config.emptyTip;
+  elements.outputTag.textContent = config.outputTag;
+  elements.modeSettingsCards.forEach((card) => { card.hidden = card.dataset.settings !== mode; });
   elements.promptChips.replaceChildren(...config.chips.map((item) => makeChip(item[0], item[1], mode)));
   document.title = config.title + ' — NodeAI Studio';
   updateContextIndicator();
@@ -491,16 +552,50 @@ async function consumeStream(response, onEvent, signal) {
   }
 }
 
+function buildWorkflowPrompt(rawPrompt) {
+  const base = String(rawPrompt || '').trim();
+  if (!base) return '';
+  const lines = [base];
+
+  if (currentMode === 'code') {
+    lines.push('Implementation settings:');
+    lines.push('Language: ' + elements.codeLanguage.value);
+    const framework = elements.codeFramework.value.trim();
+    if (framework) lines.push('Framework / runtime: ' + framework);
+    lines.push('Deliverable: ' + elements.codeDeliverable.value);
+    lines.push('Include tests: ' + (elements.codeIncludeTests.checked ? 'yes, include useful tests and test commands' : 'not requested; explain how to verify manually'));
+  } else if (currentMode === 'debug') {
+    lines.push('Debugging context:');
+    lines.push('Runtime / language: ' + elements.debugRuntime.value);
+    lines.push('Issue category: ' + elements.debugCategory.value);
+    const expected = elements.debugExpected.value.trim();
+    const observed = elements.debugObserved.value.trim();
+    if (expected) lines.push('Expected behavior: ' + expected);
+    if (observed) lines.push('Observed behavior / exact error: ' + observed);
+    lines.push('Diagnose from the supplied evidence, separate confirmed facts from hypotheses, and propose a minimal fix plus a regression check.');
+  } else if (currentMode === 'sql') {
+    lines.push('SQL settings:');
+    lines.push('Dialect: ' + elements.sqlDialect.value);
+    lines.push('Priority: ' + elements.sqlPriority.value);
+    const schema = elements.sqlSchema.value.trim();
+    if (schema) lines.push('Schema / table definitions:\n' + schema);
+    lines.push('Do not claim the query was executed. State assumptions and flag dialect-specific syntax.');
+  }
+
+  return lines.join('\n\n');
+}
+
 async function generateResponse() {
-  const prompt = elements.prompt.value.trim();
+  const rawPrompt = elements.prompt.value.trim();
+  const prompt = buildWorkflowPrompt(rawPrompt);
   if (busy) return;
-  if (!prompt) {
+  if (!rawPrompt) {
     elements.prompt.focus();
     showToast('Write a prompt first', 'warning');
     return;
   }
   if (prompt.length > serverConfig.maxPromptLength) {
-    showToast('Your prompt is over the character limit', 'warning');
+    showToast('Your prompt and workflow settings exceed the character limit. Shorten the description or schema.', 'warning');
     return;
   }
 
@@ -586,7 +681,7 @@ async function generateResponse() {
     elements.exportAnswer.disabled = !currentAnswer;
 
     if (currentMode === 'chat') {
-      addConversationTurn('user', prompt);
+      addConversationTurn('user', rawPrompt);
       addConversationTurn('assistant', currentAnswer);
       elements.responseFootnote.textContent = 'Chat context ready · ' + conversationTurns.length + ' messages in this workspace';
     }
@@ -596,7 +691,7 @@ async function generateResponse() {
       id: streamMeta.requestId,
       mode: currentMode,
       tone: elements.toneSelect.value,
-      prompt,
+      prompt: rawPrompt,
       answer: currentAnswer,
       demoMode: streamMeta.demoMode,
       model: streamMeta.model,
