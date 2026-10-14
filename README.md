@@ -1,208 +1,91 @@
-# 🤖 NodeAI Studio
+# NodeAI Studio
 
-An AI-powered developer assistant built with **Node.js and Express** that provides a unified interface for **AI chat, code generation, code debugging, and SQL assistance**.
+A full-stack AI workspace for day-to-day software development. Use one responsive interface for engineering Q&A, code generation, debugging, and SQL assistance.
 
-> **One Node.js API. Every AI workflow.**
+**Stack:** Node.js 22+, Express 5, vanilla HTML/CSS/JavaScript, OpenAI SDK, and Node's built-in test runner.
 
-## ✨ Features
+## What it does
 
-* 💬 **AI Chat** — Interact with an AI assistant through a simple interface.
-* 💻 **Code Generation** — Generate code from natural-language requirements.
-* 🐛 **Code Debugging** — Analyze code and identify potential issues.
-* 🗄️ **SQL Assistant** — Generate and improve SQL queries.
-* ⚡ **REST API** — Backend endpoints for different AI workflows.
-* 🌐 **Responsive Web Interface** — Clean browser-based developer interface.
-* 🔐 **Environment Variables** — API credentials are managed through `.env`.
-* 🧪 **Demo Mode** — Application can run without an AI API key using demo responses.
+- **Four focused workflows:** chat, code, debug, and SQL each use a tailored system prompt.
+- **Live AI or clearly labelled demo mode:** live responses use your configured OpenAI API key; without a key, the server returns deterministic examples and does not pretend a model ran.
+- **Responsive workspace:** dark/light themes, animated ambient details, mobile workflow navigation, keyboard shortcuts, prompt starters, character count, and accessible focus states.
+- **History:** the latest 50 prompts and responses are stored on the server; search and restore sessions, filter results, or clear history.
+- **Copy and export:** copy an answer or download a Markdown file containing the prompt and response.
+- **Safer defaults:** request size and prompt length limits, per-IP AI request throttling, server-only credentials, security headers, bounded history, atomic file writes, and consistent JSON errors.
+- **Regression checks:** API tests cover health/config responses, validation, demo generation, saved history, search, deletion, and unknown routes.
 
-## 🛠️ Tech Stack
+## Run locally
 
-### Frontend
+Requirements: Node.js 22 or newer and npm.
 
-* HTML5
-* CSS3
-* JavaScript
+Clone the repository, install locked dependencies, copy .env.example to .env, and start the service:
 
-### Backend
+    git clone https://github.com/mahitech580/NodeAI-Studio.git
+    cd NodeAI-Studio
+    npm ci
+    cp .env.example .env
+    npm start
 
-* Node.js
-* Express.js
-* REST APIs
+Open http://localhost:3000.
 
-### AI
+For live model responses, set AI_API_KEY in your local .env. You may optionally change AI_MODEL; the default is gpt-4o-mini. Never put a key in public/ or commit .env.
 
-* OpenAI API
-* Prompt Engineering
-* Generative AI
+Without AI_API_KEY, the app starts in **Demo mode**. The interface and API can be exercised, but the examples are not AI-generated answers.
 
-### Development Tools
+## Environment variables
 
-* Git
-* GitHub
-* npm
-* VS Code
+| Variable | Required | Description |
+| --- | --- | --- |
+| AI_API_KEY | No | OpenAI API key used only by the server. Unset means demo mode. |
+| AI_MODEL | No | Model name; defaults to gpt-4o-mini. |
+| PORT | No | HTTP port; defaults to 3000. |
+| HISTORY_FILE | No | Optional path for the JSON conversation store. |
+| CORS_ORIGIN | No | Comma-separated allowlist for cross-origin frontends. Same-origin use needs no CORS setting. |
 
-## 🏗️ Architecture
+## API
 
-```text
-User
- │
- ▼
-Web Interface
- │
- ▼
-Node.js + Express Server
- │
- ├── /api/ai/code
- │
- ├── /api/ai/debug
- │
- └── /api/ai/sql
- │
- ▼
-OpenAI API
- │
- ▼
-AI Response
- │
- ▼
-Web Interface
-```
+All successful responses are JSON and include success: true.
 
-## 📡 API Endpoints
+| Method | Route | Purpose |
+| --- | --- | --- |
+| GET | /api/health | Server health, demo/live mode, configured model name, uptime, and version. |
+| GET | /api/config | Public mode list, prompt character limit, and history limit. |
+| POST | /api/ai | Generate a response. JSON body: {"mode":"chat","prompt":"..."}. Modes: chat, code, debug, sql. |
+| GET | /api/history | List saved sessions. Supports limit, q, and mode query parameters. |
+| DELETE | /api/history | Clear stored conversation history. |
 
-| Endpoint        | Method | Purpose                 |
-| --------------- | ------ | ----------------------- |
-| `/api/ai/code`  | POST   | Generate code           |
-| `/api/ai/debug` | POST   | Analyze and debug code  |
-| `/api/ai/sql`   | POST   | Generate or improve SQL |
+The AI endpoint accepts prompts up to 12,000 characters and is rate-limited to 20 requests per minute per client IP by default. These limits are intentionally conservative for a personal demo; use a shared store and a production-grade rate limiter if running multiple server instances.
 
-## 🚀 Getting Started
+## Quality checks
 
-### 1. Clone the repository
+    npm run check
+    npm test
 
-```bash
-git clone https://github.com/mahitech580/NodeAI-Studio.git
-cd NodeAI-Studio
-```
+GitHub Actions runs installation, syntax checks, and the API regression suite on pushes and pull requests to main.
 
-### 2. Install dependencies
+## Deployment notes
 
-```bash
-npm install
-```
+Deploy the Node.js application as a Node service (for example, on a platform that supports persistent environment variables and a writable filesystem). Configure AI_API_KEY in the host's secret/environment settings. If the frontend and API live on different origins, set CORS_ORIGIN to the exact frontend origin.
 
-### 3. Configure environment variables
+GitHub Pages can host static HTML/CSS/JavaScript only; it cannot run this Express API. If you publish the public/ directory on Pages, the UI can load but generation, health, and history calls need a separately deployed API and a frontend API-base configuration before they will work end-to-end.
 
-Create a `.env` file in the project root:
+Conversation history is file-backed for this compact project. Ephemeral hosting filesystems may reset during restarts; use a persistent disk or database if history must survive redeployments. This demo has no user accounts, so do not deploy it as a shared, multi-user private workspace without adding authentication and user-scoped storage.
 
-```env
-AI_API_KEY=your_api_key_here
-```
+## Project structure
 
-Replace `your_api_key_here` with your API key.
+    NodeAI-Studio/
+    ├── .github/workflows/ci.yml
+    ├── public/
+    │   ├── index.html
+    │   ├── script.js
+    │   └── style.css
+    ├── storage/history.json
+    ├── test/server.test.js
+    ├── .env.example
+    ├── package.json
+    ├── package-lock.json
+    └── server.js
 
-### 4. Start the application
+## License
 
-```bash
-node server.js
-```
-
-Open the application in your browser using the local address displayed by the server.
-
-## 🧪 Demo Mode
-
-NodeAI Studio supports **Demo Mode** when an AI API key is not configured.
-
-This allows the interface and application flow to be tested without connecting to an external AI service.
-
-For full AI functionality, configure the `AI_API_KEY` environment variable.
-
-## 📂 Project Structure
-
-```text
-NodeAI-Studio/
-│
-├── public/
-│   ├── index.html
-│   ├── style.css
-│   └── script.js
-│
-├── server.js
-├── package.json
-├── package-lock.json
-├── .env
-├── .gitignore
-└── README.md
-```
-
-> **Note:** Do not commit your `.env` file or expose API keys in the repository.
-
-## 🔄 How It Works
-
-### Code Generation
-
-The user describes a programming requirement, and NodeAI Studio sends the request to the backend. The backend processes the request and returns the generated code.
-
-### Code Debugging
-
-The user submits code and describes the issue. The debugging workflow analyzes the input and provides an explanation and suggested correction.
-
-### SQL Assistance
-
-Users can describe a database requirement or provide an SQL query. The SQL workflow can generate, improve, or explain SQL queries.
-
-## 🔒 Security
-
-API keys should be stored in environment variables rather than directly inside frontend or backend source code.
-
-Example:
-
-```env
-AI_API_KEY=your_api_key_here
-```
-
-Add `.env` to `.gitignore`:
-
-```gitignore
-node_modules/
-.env
-```
-
-## 🎯 Project Goals
-
-NodeAI Studio was developed to demonstrate how **Generative AI can be integrated into a full-stack JavaScript application** using a Node.js and Express backend.
-
-The project focuses on:
-
-* REST API development
-* AI API integration
-* Prompt-based workflows
-* Backend/frontend communication
-* Environment configuration
-* Developer productivity tools
-
-## 🔮 Future Enhancements
-
-* 🔐 User authentication
-* 💾 Conversation history
-* 📋 Code copy/export functionality
-* 🌙 Dark/light theme
-* 🧠 Multiple AI model support
-* 📊 Usage tracking
-* 🗂️ Saved AI sessions
-* ⚡ Streaming AI responses
-* 🧩 Additional developer tools
-* 🚀 Production deployment
-
-## 👨‍💻 Author
-
-**Mahendra**
-
-GitHub: https://github.com/mahitech580
-
-## 📄 License
-
-This project is licensed under the **MIT License**.
-
-Copyright © 2026 Mahendra.
+MIT. See LICENSE if a license file is added to the repository.
