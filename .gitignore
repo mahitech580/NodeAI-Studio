@@ -5,4 +5,8 @@ node_modules/
 npm-debug.log*
 .DS_Store
 coverage/
+.nyc_output/
 storage/*.tmp
+*.log
+.vscode/
+.idea/

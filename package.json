@@ -1,24 +1,29 @@
 {
   "name": "nodeai-studio",
-  "version": "2.0.0",
-  "description": "A polished, full-stack AI workspace for chat, code generation, debugging, and SQL assistance.",
+  "version": "2.1.0",
+  "description": "A streaming AI workspace for engineering chat, code generation, debugging, and SQL.",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
     "check": "node --check server.js && node --check public/config.js && node --check public/script.js",
-    "test": "node --test"
+    "test": "node --test",
+    "test:watch": "node --test --watch"
   },
   "keywords": [
     "nodejs",
     "express",
-    "generative-ai",
+    "openai",
+    "streaming",
     "developer-tools",
-    "openai"
+    "code-generation"
   ],
   "author": "Mahendra Sai Kondaveeti",
   "license": "MIT",
   "type": "commonjs",
+  "engines": {
+    "node": ">=22"
+  },
   "dependencies": {
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
