@@ -17,12 +17,12 @@ function apiUrl(path) {
 }
 
 const elements = {
-  modeButtons: $('.mode-button'), prompt: $('#prompt'), charCount: $('#charCount'),
+  modeButtons: $$('.mode-button'), prompt: $('#prompt'), charCount: $('#charCount'),
   heroEyebrowText: $('#heroEyebrowText'), heroTitleLead: $('#heroTitleLead'), heroTitleAccent: $('#heroTitleAccent'),
   heroDescription: $('#heroDescription'), composerTitle: $('#composerTitle'), composerSubtitle: $('#composerSubtitle'),
   promptLabel: $('#promptLabel'), responseTitle: $('#responseTitle'), responseSubtitle: $('#responseSubtitle'),
   emptyTitle: $('#emptyTitle'), emptyDescription: $('#emptyDescription'), emptyTip: $('#emptyTip'),
-  outputTag: $('#outputTag'), modeSettingsCards: $('[data-settings]'),
+  outputTag: $('#outputTag'), modeSettingsCards: $$('[data-settings]'),
   codeLanguage: $('#codeLanguage'), codeFramework: $('#codeFramework'), codeDeliverable: $('#codeDeliverable'),
   codeIncludeTests: $('#codeIncludeTests'), debugRuntime: $('#debugRuntime'), debugCategory: $('#debugCategory'),
   debugExpected: $('#debugExpected'), debugObserved: $('#debugObserved'),
