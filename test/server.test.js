@@ -44,13 +44,16 @@ test('health endpoint reports service state without exposing credentials', async
   assert.equal(response.headers.get('cache-control'), 'no-store');
 });
 
-test('public config describes modes, tones, and streaming', async (t) => {
+test('public config describes modes, tones, stream support, and compatible providers', async (t) => {
   const base = await makeServer(t);
   const body = await (await fetch(base + '/api/config')).json();
   assert.deepEqual(body.modes, ['chat', 'code', 'debug', 'sql']);
   assert.deepEqual(body.tones, ['balanced', 'concise', 'deep']);
   assert.equal(body.streaming, true);
   assert.equal(body.maxPromptLength, MAX_PROMPT_LENGTH);
+  assert.deepEqual(body.providers.map((provider) => provider.id), ['openai', 'gemini', 'groq', 'openrouter']);
+  assert.equal(body.credentialTransport, 'request-header-only');
+  assert.equal(JSON.stringify(body).includes('apiKey'), false);
 });
 
 test('AI endpoint rejects invalid prompts, modes, tones and context', async (t) => {
@@ -69,33 +72,32 @@ test('AI endpoint rejects excessive prompt size', async (t) => {
   assert.equal(response.status, 413);
 });
 
-test('non-streaming demo responses are labelled but not persisted on the shared server', async (t) => {
+test('generation refuses to disguise a missing provider as a live or canned answer', async (t) => {
   const base = await makeServer(t);
   const response = await jsonPost(base + '/api/ai', { mode: 'code', tone: 'concise', prompt: 'Build a health endpoint' });
   const result = await response.json();
-  assert.equal(response.status, 200);
-  assert.equal(result.success, true);
-  assert.equal(result.demoMode, true);
-  assert.match(result.answer, /Demo mode is active/i);
+  assert.equal(response.status, 503);
+  assert.equal(result.success, false);
+  assert.equal(result.needsProvider, true);
+  assert.match(result.error, /No live AI provider is connected/i);
+  assert.doesNotMatch(JSON.stringify(result), /Demo mode is active|Request received|Example starter/i);
   const history = await (await fetch(base + '/api/history')).json();
   assert.equal(history.total, 0);
   assert.deepEqual(history.history, []);
   assert.equal(history.storage, 'browser-only');
-  assert.equal(JSON.stringify(history).includes('Build a health endpoint'), false);
 });
 
-test('stream endpoint emits metadata, token deltas, and completion without server-side history', async (t) => {
+test('stream endpoint does not send canned text when no live provider is configured', async (t) => {
   const base = await makeServer(t);
   const response = await jsonPost(base + '/api/ai/stream', {
     mode: 'chat', tone: 'balanced', prompt: 'Explain promises'
   });
-  const text = await response.text();
-  assert.equal(response.status, 200);
-  assert.match(response.headers.get('content-type') || '', /text\/event-stream/i);
-  assert.match(text, /event: meta/);
-  assert.match(text, /event: delta/);
-  assert.match(text, /event: done/);
-  assert.match(text, /Demo mode is active/);
+  const result = await response.json();
+  assert.equal(response.status, 503);
+  assert.equal(result.success, false);
+  assert.equal(result.needsProvider, true);
+  assert.match(result.error, /Connect AI/i);
+  assert.doesNotMatch(JSON.stringify(result), /event: delta|Demo mode is active/);
   assert.equal((await (await fetch(base + '/api/history')).json()).total, 0);
 });
 
@@ -145,7 +147,7 @@ test('history compatibility endpoint never exposes prompt data and validates mod
   assert.match((await cleared.json()).message, /no server-side conversation history/i);
 });
 
-test('configured GitHub Pages and Render origins can call the API', async (t) => {
+test('configured origins have CORS access while disconnected generation fails honestly', async (t) => {
   const origins = [
     'https://mahitech580.github.io',
     'https://nodeai-studio-api-mahitech580.onrender.com'
@@ -157,12 +159,12 @@ test('configured GitHub Pages and Render origins can call the API', async (t) =>
     assert.equal(health.headers.get('access-control-allow-origin'), origin);
     const response = await fetch(base + '/api/ai/stream', {
       method: 'POST',
-      headers: { Origin: origin, 'Content-Type': 'application/json', Accept: 'text/event-stream' },
+      headers: { Origin: origin, 'Content-Type': 'application/json', Accept: 'application/json' },
       body: JSON.stringify({ mode: 'chat', prompt: 'CORS smoke test' })
     });
-    assert.equal(response.status, 200);
+    assert.equal(response.status, 503);
     assert.equal(response.headers.get('access-control-allow-origin'), origin);
-    assert.match(await response.text(), /event: done/);
+    assert.equal((await response.json()).needsProvider, true);
   }
 });
 
@@ -206,7 +208,11 @@ test('static workspace contains advanced controls and serves source assets', asy
   const response = await fetch(base + '/');
   const html = await response.text();
   assert.equal(response.status, 200);
-  for (const selector of ['id="toneSelect"', 'id="stopGeneration"', 'id="commandDialog"', 'id="savedPrompts"', 'History stays in this browser']) {
+  for (const selector of [
+    'id="toneSelect"', 'id="stopGeneration"', 'id="commandDialog"', 'id="savedPrompts"',
+    'id="providerDialog"', 'id="providerSelect"', 'id="providerApiKey"', 'id="testConnect"',
+    'id="providerSettings"', 'History stays in this browser'
+  ]) {
     assert.ok(html.includes(selector), selector);
   }
   for (const asset of ['/script.js', '/style.css', '/config.js']) {
@@ -215,12 +221,20 @@ test('static workspace contains advanced controls and serves source assets', asy
   const script = await (await fetch(base + '/script.js')).text();
   assert.match(script, /nodeai-session-history/);
   assert.match(script, /recordLocalHistory/);
+  assert.match(script, /providerHeaders\(\)/);
+  assert.match(script, /sessionStorage\.setItem\(PROVIDER_SESSION_KEY/);
+  assert.doesNotMatch(script, /localStorage\.setItem\(PROVIDER_SESSION_KEY/);
   assert.doesNotMatch(script, /fetch\(apiUrl\('\/api\/history/);
+  const styles = await (await fetch(base + '/style.css')).text();
+  assert.match(styles, /\.provider-dialog/);
+  assert.match(styles, /\.provider-connect-button/);
 });
 
-test('rate limiting returns retry guidance after the request budget is reached', async (t) => {
+test('rate limiting returns retry guidance even when no provider is configured', async (t) => {
   const base = await makeServer(t, { rateLimitMax: 1 });
-  assert.equal((await jsonPost(base + '/api/ai', { mode: 'chat', prompt: 'first' })).status, 200);
+  const first = await jsonPost(base + '/api/ai', { mode: 'chat', prompt: 'first' });
+  assert.equal(first.status, 503);
+  assert.equal((await first.json()).needsProvider, true);
   const limited = await jsonPost(base + '/api/ai', { mode: 'chat', prompt: 'second' });
   assert.equal(limited.status, 429);
   assert.match(limited.headers.get('retry-after') || '', /^\d+$/);
@@ -259,7 +273,71 @@ test('unknown API routes return structured JSON errors', async (t) => {
   assert.equal((await response.json()).success, false);
 });
 
+
+test('BYOK credentials select a whitelisted provider for real streaming without exposing the key', async (t) => {
+  const calls = [];
+  const fakeAI = { chat: { completions: { create: async (request) => {
+    calls.push(request);
+    return (async function* () {
+      yield { choices: [{ delta: { content: 'This came ' } }] };
+      yield { choices: [{ delta: { content: 'from the live test client.' } }] };
+    })();
+  } } } };
+  const factoryCalls = [];
+  const base = await makeServer(t, {
+    providerClientFactory: (provider, apiKey) => { factoryCalls.push({ provider, apiKey }); return fakeAI; }
+  });
+  const secret = 'unit-test-provider-secret';
+  const response = await jsonPost(base + '/api/ai/stream', {
+    mode: 'code', tone: 'deep', prompt: 'Create a tested API'
+  }, { 'X-NodeAI-Api-Key': secret, 'X-NodeAI-Provider': 'gemini', 'X-NodeAI-Model': 'gemini-3.8-flash' });
+  const text = await response.text();
+  assert.equal(response.status, 200);
+  assert.match(text, /event: meta/);
+  assert.match(text, /"provider":"gemini"/);
+  assert.match(text, /This came /);
+  assert.match(text, /from the live test client/);
+  assert.match(text, /event: done/);
+  assert.equal(calls[0].stream, true);
+  assert.equal(calls[0].model, 'gemini-3.8-flash');
+  assert.equal(factoryCalls[0].provider, 'gemini');
+  assert.equal(factoryCalls[0].apiKey, secret);
+  assert.equal(text.includes(secret), false);
+});
+
+test('provider test performs a short real completion and never returns the key', async (t) => {
+  let calls = 0;
+  const fakeAI = { chat: { completions: { create: async () => {
+    calls++;
+    return { choices: [{ message: { content: 'NODEAI_READY' } }] };
+  } } } };
+  const base = await makeServer(t, { providerClientFactory: () => fakeAI });
+  const headers = { 'X-NodeAI-Api-Key': 'provider-key-for-tests', 'X-NodeAI-Provider': 'groq', 'X-NodeAI-Model': 'openai/gpt-oss-20b' };
+  const response = await jsonPost(base + '/api/providers/test', {}, headers);
+  const body = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(body.success, true);
+  assert.equal(body.provider, 'groq');
+  assert.equal(body.model, 'openai/gpt-oss-20b');
+  assert.equal(calls, 1);
+  assert.equal(JSON.stringify(body).includes('provider-key-for-tests'), false);
+  assert.equal((await jsonPost(base + '/api/providers/test', {})).status, 400);
+});
+
+test('invalid BYOK provider and model identifiers are rejected before provider calls', async (t) => {
+  let calls = 0;
+  const base = await makeServer(t, { providerClientFactory: () => { calls++; throw new Error('must not run'); } });
+  const key = { 'X-NodeAI-Api-Key': 'provider-key-for-tests' };
+  assert.equal((await jsonPost(base + '/api/ai', { prompt: 'hello' }, {
+    ...key, 'X-NodeAI-Provider': 'not-a-provider', 'X-NodeAI-Model': 'model'
+  })).status, 400);
+  assert.equal((await jsonPost(base + '/api/ai', { prompt: 'hello' }, {
+    ...key, 'X-NodeAI-Provider': 'gemini', 'X-NodeAI-Model': 'bad model with spaces'
+  })).status, 400);
+  assert.equal(calls, 0);
+});
+
 test('dependency lockfile uses patched proxy-addr release', () => {
   assert.equal(packageLock.packages['node_modules/proxy-addr'].version, '2.0.8');
-  assert.equal(packageLock.packages[''].version, '2.2.0');
+  assert.equal(packageLock.packages[''].version, '2.3.0');
 });

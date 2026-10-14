@@ -4,6 +4,13 @@ const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
 const API_BASE_URL = String(window.NODEAI_CONFIG?.apiBaseUrl || '').trim().replace(/\/+$/, '');
 const API_TIMEOUT_MS = 90000;
+const PROVIDER_SESSION_KEY = 'nodeai-provider-session';
+const PROVIDER_OPTIONS = {
+  gemini: { label: 'Google Gemini', shortLabel: 'Gemini', defaultModel: 'gemini-3.8-flash', hint: 'Gemini uses Google AI Studio API keys. Billing and model access are managed by Google.' },
+  openai: { label: 'OpenAI', shortLabel: 'OpenAI', defaultModel: 'gpt-4o-mini', hint: 'Use an OpenAI API key with API billing enabled; a ChatGPT subscription is separate.' },
+  groq: { label: 'Groq', shortLabel: 'Groq', defaultModel: 'openai/gpt-oss-20b', hint: 'Groq provides fast inference for supported open-weight models. Check the Groq model catalog.' },
+  openrouter: { label: 'OpenRouter', shortLabel: 'OpenRouter', defaultModel: 'openai/gpt-4o-mini', hint: 'Use a model ID supported by your OpenRouter account, for example the provider/model shown in its model catalog.' }
+};
 const RENDER_COLD_START_HINT_MS = 12000;
 const MAX_ATTACHMENT_BYTES = 64 * 1024;
 const HISTORY_STORAGE_KEY = 'nodeai-session-history';
@@ -40,7 +47,12 @@ const elements = {
   sessionMetric: $('#sessionMetric'), latencyMetric: $('#latencyMetric'), latencyCaption: $('#latencyCaption'),
   modeBadge: $('#modeBadge'), breadcrumbMode: $('#breadcrumbMode'), toast: $('#toast'),
   commandDialog: $('#commandDialog'), closeCommand: $('#closeCommand'), commandSearch: $('#commandSearch'),
-  commandItems: $('#commandItems')
+  commandItems: $('#commandItems'), providerSettings: $('#providerSettings'),
+  providerConnectDot: $('#providerConnectDot'), providerConnectLabel: $('#providerConnectLabel'),
+  providerDialog: $('#providerDialog'), closeProvider: $('#closeProvider'), providerSelect: $('#providerSelect'),
+  providerModel: $('#providerModel'), providerModelHint: $('#providerModelHint'), providerApiKey: $('#providerApiKey'),
+  rememberProvider: $('#rememberProvider'), providerFeedback: $('#providerFeedback'),
+  disconnectProvider: $('#disconnectProvider'), testConnect: $('#testConnect'), testConnectLabel: $('#testConnectLabel')
 };
 
 const MODE_CONFIG = {
@@ -100,6 +112,9 @@ let busy = false;
 let toastTimer = null;
 let savedPrompts = readSavedPrompts();
 let serverConfig = { maxPromptLength: 12000, maxContextMessages: 8 };
+let serverAIConfigured = false;
+let providerState = { provider: 'gemini', model: PROVIDER_OPTIONS.gemini.defaultModel, apiKey: '', remember: false };
+let providerTestInProgress = false;
 
 function safelyReadStorage(key, fallback) {
   try {
@@ -186,6 +201,181 @@ function showToast(message, kind = 'success') {
 function setServerStatus(kind, message) {
   elements.status.className = 'server-status ' + kind;
   elements.statusText.textContent = message;
+}
+
+function providerInfo(id = providerState.provider) {
+  return PROVIDER_OPTIONS[id] || PROVIDER_OPTIONS.gemini;
+}
+
+function providerHeaders() {
+  if (!providerState.apiKey) return {};
+  return {
+    'X-NodeAI-Api-Key': providerState.apiKey,
+    'X-NodeAI-Provider': providerState.provider,
+    'X-NodeAI-Model': providerState.model
+  };
+}
+
+function updateProviderButton() {
+  const connected = Boolean(providerState.apiKey);
+  elements.providerConnectLabel.textContent = connected
+    ? providerInfo().shortLabel + ' · Live'
+    : (serverAIConfigured ? 'Server AI connected' : 'Connect AI');
+  elements.providerConnectDot.classList.toggle('is-connected', connected || serverAIConfigured);
+  elements.providerSettings.classList.toggle('is-connected', connected || serverAIConfigured);
+  elements.providerSettings.title = connected
+    ? 'Connected to ' + providerInfo().label + ' (' + providerState.model + ')'
+    : serverAIConfigured ? 'Use the server-configured AI model or connect your own provider' : 'Connect a live AI provider';
+}
+
+function setProviderFeedback(message, type = '') {
+  elements.providerFeedback.textContent = message;
+  elements.providerFeedback.className = 'provider-feedback' + (type ? ' ' + type : '');
+}
+
+function loadProviderSession() {
+  try {
+    const raw = sessionStorage.getItem(PROVIDER_SESSION_KEY);
+    if (!raw) return;
+    const saved = JSON.parse(raw);
+    if (!saved || !Object.hasOwn(PROVIDER_OPTIONS, saved.provider) ||
+        typeof saved.model !== 'string' || typeof saved.apiKey !== 'string' ||
+        !saved.apiKey || saved.apiKey.length > 512 || !/^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$/.test(saved.model)) {
+      sessionStorage.removeItem(PROVIDER_SESSION_KEY);
+      return;
+    }
+    providerState = { provider: saved.provider, model: saved.model, apiKey: saved.apiKey, remember: true };
+    elements.providerSelect.value = providerState.provider;
+    elements.providerModel.value = providerState.model;
+    elements.rememberProvider.checked = true;
+    elements.providerModelHint.textContent = providerInfo().hint;
+    setProviderFeedback('A live connection is available for this tab: ' + providerInfo().label + ' · ' + providerState.model, 'success');
+  } catch {
+    providerState.remember = false;
+  }
+  updateProviderButton();
+}
+
+function saveProviderSession() {
+  try {
+    if (providerState.remember && providerState.apiKey) {
+      sessionStorage.setItem(PROVIDER_SESSION_KEY, JSON.stringify({
+        provider: providerState.provider, model: providerState.model, apiKey: providerState.apiKey
+      }));
+    } else {
+      sessionStorage.removeItem(PROVIDER_SESSION_KEY);
+    }
+  } catch {
+    providerState.remember = false;
+    elements.rememberProvider.checked = false;
+    showToast('Tab storage is unavailable; the key will remain in memory only.', 'warning');
+  }
+}
+
+function openProviderDialog() {
+  const wasConnected = Boolean(providerState.apiKey);
+  elements.providerSelect.value = providerState.provider;
+  elements.providerModel.value = providerState.model;
+  elements.providerModelHint.textContent = providerInfo().hint;
+  elements.providerApiKey.value = '';
+  elements.rememberProvider.checked = providerState.remember;
+  if (!wasConnected) {
+    setProviderFeedback(serverAIConfigured
+      ? 'The server has a configured model. You can test it or connect a separate provider key.'
+      : 'Choose a provider, enter its API key, and test a real completion before generating.', '');
+  } else {
+    setProviderFeedback('Already connected to ' + providerInfo().label + '. Leave the key blank to reuse the in-memory credential, or enter a replacement key.', 'success');
+  }
+  if (!elements.providerDialog.open) elements.providerDialog.showModal();
+}
+
+function closeProviderDialog() {
+  if (elements.providerDialog.open) elements.providerDialog.close();
+  elements.providerApiKey.value = '';
+}
+
+async function connectProvider() {
+  if (providerTestInProgress) return;
+  const provider = elements.providerSelect.value;
+  const model = elements.providerModel.value.trim();
+  const typedKey = elements.providerApiKey.value.trim();
+  const reuseExisting = providerState.apiKey && providerState.provider === provider && providerState.model === model;
+  const apiKey = typedKey || (reuseExisting ? providerState.apiKey : '');
+  if (!Object.hasOwn(PROVIDER_OPTIONS, provider)) {
+    setProviderFeedback('Choose a supported provider.', 'error');
+    return;
+  }
+  if (!model || !/^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$/.test(model)) {
+    setProviderFeedback('Enter a valid model ID. Use letters, numbers, dots, underscores, colons, slashes, or hyphens.', 'error');
+    elements.providerModel.focus();
+    return;
+  }
+  if (apiKey.length < 8 || apiKey.length > 512) {
+    setProviderFeedback('Enter a provider API key between 8 and 512 characters.', 'error');
+    elements.providerApiKey.focus();
+    return;
+  }
+
+  providerTestInProgress = true;
+  elements.testConnect.disabled = true;
+  elements.testConnectLabel.textContent = 'Testing live connection…';
+  setProviderFeedback('Sending a small test prompt to ' + providerInfo(provider).label + '…', '');
+  try {
+    const response = await fetch(apiUrl('/api/providers/test'), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        'X-NodeAI-Api-Key': apiKey,
+        'X-NodeAI-Provider': provider,
+        'X-NodeAI-Model': model
+      },
+      body: '{}',
+      signal: AbortSignal.timeout(25000)
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || !result.success) {
+      setProviderFeedback(result.error || 'The provider connection failed. Check the key and model ID.', 'error');
+      return;
+    }
+    providerState = { provider, model, apiKey, remember: elements.rememberProvider.checked };
+    saveProviderSession();
+    elements.providerApiKey.value = '';
+    setProviderFeedback('Connected · ' + result.provider + ' · ' + result.model + ' · ' + formatDuration(result.durationMs), 'success');
+    updateProviderButton();
+    setServerStatus('online', providerInfo().shortLabel + ' live');
+    elements.status.title = 'Real model responses enabled for this tab using ' + providerInfo().label + ' (' + model + ').';
+    showToast('Live AI connection verified');
+    closeProviderDialog();
+  } catch (error) {
+    const message = error.name === 'AbortError' || error.name === 'TimeoutError'
+      ? 'The connection test timed out. Retry or check the provider dashboard and model ID.'
+      : 'Could not reach the NodeAI API. The server may be waking up; retry shortly.';
+    setProviderFeedback(message, 'error');
+  } finally {
+    providerTestInProgress = false;
+    elements.testConnect.disabled = false;
+    elements.testConnectLabel.textContent = 'Test & connect';
+  }
+}
+
+function disconnectProvider() {
+  providerState = {
+    provider: elements.providerSelect.value || 'gemini',
+    model: elements.providerModel.value.trim() || providerInfo().defaultModel,
+    apiKey: '',
+    remember: false
+  };
+  try { sessionStorage.removeItem(PROVIDER_SESSION_KEY); } catch { /* private browsing may restrict storage */ }
+  elements.providerApiKey.value = '';
+  elements.rememberProvider.checked = false;
+  setProviderFeedback(serverAIConfigured
+    ? 'Your browser key was removed. The server-configured model remains available.'
+    : 'Disconnected. No browser key is active; connect a provider before generating.', '');
+  updateProviderButton();
+  closeProviderDialog();
+  checkServer();
+  showToast('Browser provider disconnected', 'warning');
 }
 
 function updatePromptCount() {
@@ -487,10 +677,17 @@ async function checkServer() {
     if (!response.ok) throw new Error('Server unavailable');
     const data = await response.json();
     if (!data.success) throw new Error('Server unavailable');
-    setServerStatus(data.demoMode ? 'demo' : 'online', data.demoMode ? 'Demo mode' : 'AI connected');
-    elements.status.title = data.demoMode
-      ? 'Backend is healthy. No AI_API_KEY is configured, so responses are examples.'
-      : 'AI provider configured. Model: ' + (data.model || 'configured model');
+    serverAIConfigured = !data.demoMode;
+    updateProviderButton();
+    if (providerState.apiKey) {
+      setServerStatus('online', providerInfo().shortLabel + ' live');
+      elements.status.title = 'Real model responses enabled for this tab using ' + providerInfo().label + ' (' + providerState.model + ').';
+    } else {
+      setServerStatus(data.demoMode ? 'demo' : 'online', data.demoMode ? 'Connect AI' : 'AI connected');
+      elements.status.title = data.demoMode
+        ? 'Backend is healthy, but no server AI provider is configured. Connect a provider for real answers.'
+        : 'AI provider configured on the server. Model: ' + (data.model || 'configured model');
+    }
   } catch {
     setServerStatus('offline', 'Server offline');
     elements.status.title = 'Could not reach the NodeAI Studio API.';
@@ -635,7 +832,11 @@ async function generateResponse() {
     const context = currentMode === 'chat' ? conversationTurns.slice(-serverConfig.maxContextMessages) : [];
     const response = await fetch(apiUrl('/api/ai/stream'), {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream, application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'text/event-stream, application/json',
+        ...providerHeaders()
+      },
       body: JSON.stringify({ mode: currentMode, tone: elements.toneSelect.value, prompt, context }),
       signal: activeController.signal
     });
@@ -652,7 +853,7 @@ async function generateResponse() {
         streamMeta = { ...streamMeta, ...data };
         elements.resultType.className = 'result-type ' + (data.demoMode ? 'demo-result' : 'live-result');
         elements.resultType.textContent = data.demoMode ? 'DEMO STREAM' : 'LIVE STREAM';
-        elements.resultModel.textContent = data.model || (data.demoMode ? 'Configured demo output' : 'Streaming from model');
+        elements.resultModel.textContent = data.model ? ((data.provider ? providerInfo(data.provider).shortLabel + ' · ' : '') + data.model) : 'Waiting for model metadata…';
       } else if (eventName === 'delta' && typeof data.text === 'string') {
         receivedAnyText = true;
         currentAnswer += data.text;
@@ -674,11 +875,9 @@ async function generateResponse() {
     elements.resultType.className = 'result-type ' + (streamMeta.demoMode ? 'demo-result' : 'live-result');
     elements.resultType.textContent = streamMeta.demoMode ? 'DEMO RESPONSE' : 'MODEL RESPONSE';
     elements.resultTime.textContent = formatDuration(streamMeta.durationMs);
-    elements.resultModel.textContent = streamMeta.model || (streamMeta.demoMode ? 'Demo mode · no live model used' : 'Response generated');
+    elements.resultModel.textContent = streamMeta.model ? ((streamMeta.provider ? providerInfo(streamMeta.provider).shortLabel + ' · ' : '') + streamMeta.model) : 'Live model response';
     elements.answerText.classList.remove('streaming-text');
-    elements.responseFootnote.textContent = streamMeta.demoMode
-      ? 'Demo output · configure an API key for live model responses'
-      : 'Response complete · review before using in production';
+    elements.responseFootnote.textContent = 'Live response complete · review before using in production';
     elements.exportAnswer.disabled = !currentAnswer;
 
     if (currentMode === 'chat') {
@@ -699,8 +898,10 @@ async function generateResponse() {
       durationMs: streamMeta.durationMs,
       createdAt: streamMeta.createdAt
     });
-    setServerStatus(streamMeta.demoMode ? 'demo' : 'online', streamMeta.demoMode ? 'Demo mode' : 'AI connected');
-    showToast(streamMeta.demoMode ? 'Demo response ready' : 'Response generated');
+    setServerStatus('online', (providerState.apiKey ? providerInfo().shortLabel : (streamMeta.provider || 'AI')) + ' live');
+    elements.status.title = 'Real model response from ' + (streamMeta.provider || providerInfo().label) + ' · ' + (streamMeta.model || '');
+    updateProviderButton();
+    showToast('Live response generated');
   } catch (error) {
     elements.answerText.classList.remove('streaming-text');
     if (error.name === 'AbortError') {
@@ -949,6 +1150,25 @@ elements.clearHistory.addEventListener('click', clearHistory);
 elements.historySearch.addEventListener('input', renderHistory);
 elements.themeToggle.addEventListener('click', () => setTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'));
 elements.closeCommand.addEventListener('click', closeCommandPalette);
+elements.providerSettings.addEventListener('click', openProviderDialog);
+elements.closeProvider.addEventListener('click', closeProviderDialog);
+elements.testConnect.addEventListener('click', connectProvider);
+elements.disconnectProvider.addEventListener('click', disconnectProvider);
+elements.providerSelect.addEventListener('change', () => {
+  const info = providerInfo(elements.providerSelect.value);
+  elements.providerModel.value = info.defaultModel;
+  elements.providerModelHint.textContent = info.hint;
+  setProviderFeedback('Enter a key for ' + info.label + ' and test the selected model.', '');
+});
+elements.providerDialog.addEventListener('click', (event) => {
+  if (event.target === elements.providerDialog) closeProviderDialog();
+});
+elements.providerApiKey.addEventListener('keydown', (event) => {
+  if (event.key === 'Enter') {
+    event.preventDefault();
+    connectProvider();
+  }
+});
 elements.commandSearch.addEventListener('input', () => filterCommandItems(elements.commandSearch.value));
 elements.commandItems.addEventListener('click', (event) => {
   const button = event.target.closest('[data-command]');
@@ -995,5 +1215,7 @@ renderSavedPrompts();
 showEmptyResponse();
 fetchConfig();
 loadHistory();
+loadProviderSession();
+updateProviderButton();
 checkServer();
 setInterval(checkServer, 45000);

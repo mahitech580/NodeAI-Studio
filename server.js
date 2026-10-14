@@ -17,10 +17,53 @@ const MAX_CONTEXT_CHARS = 16000;
 const HISTORY_LIMIT = 50;
 const VALID_MODES = new Set(['chat', 'code', 'debug', 'sql']);
 const VALID_TONES = new Set(['balanced', 'concise', 'deep']);
+const PROVIDERS = Object.freeze({
+  openai: { label: 'OpenAI', defaultModel: 'gpt-4o-mini', baseURL: null },
+  gemini: { label: 'Google Gemini', defaultModel: 'gemini-3.8-flash', baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai/' },
+  groq: { label: 'Groq', defaultModel: 'openai/gpt-oss-20b', baseURL: 'https://api.groq.com/openai/v1' },
+  openrouter: { label: 'OpenRouter', defaultModel: 'openai/gpt-4o-mini', baseURL: 'https://openrouter.ai/api/v1' }
+});
+const MODEL_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$/;
+
+function createProviderClient(provider, apiKey, factory = OpenAI) {
+  const settings = PROVIDERS[provider];
+  if (!settings) throw new Error('Unsupported AI provider.');
+  return new factory({ apiKey, ...(settings.baseURL ? { baseURL: settings.baseURL } : {}), timeout: 30000, maxRetries: 1 });
+}
 
 function createAIClient() {
-  if (!process.env.AI_API_KEY) return null;
-  return new OpenAI({ apiKey: process.env.AI_API_KEY, timeout: 30000, maxRetries: 1 });
+  const apiKey = String(process.env.AI_API_KEY || '').trim();
+  if (!apiKey) return null;
+  const provider = process.env.AI_PROVIDER || 'openai';
+  if (!PROVIDERS[provider]) throw new Error('AI_PROVIDER must be one of: ' + Object.keys(PROVIDERS).join(', '));
+  return createProviderClient(provider, apiKey);
+}
+
+function readBrowserProviderConfig(req) {
+  const apiKey = String(req.get('x-nodeai-api-key') || '').trim();
+  if (!apiKey) return { config: null, error: null };
+  if (apiKey.length < 8 || apiKey.length > 512) return { config: null, error: 'The provider API key must be between 8 and 512 characters.' };
+  const provider = String(req.get('x-nodeai-provider') || 'gemini').trim().toLowerCase();
+  const settings = PROVIDERS[provider];
+  if (!settings) return { config: null, error: 'Unsupported provider. Choose OpenAI, Google Gemini, Groq, or OpenRouter.' };
+  const model = String(req.get('x-nodeai-model') || settings.defaultModel).trim();
+  if (!MODEL_ID_PATTERN.test(model)) return { config: null, error: 'Enter a valid model ID using letters, numbers, dots, underscores, colons, slashes, or hyphens.' };
+  return { config: { provider, model, apiKey }, error: null };
+}
+
+function resolveRequestAI(req, serverAI, serverModel, serverProvider, providerClientFactory) {
+  const supplied = readBrowserProviderConfig(req);
+  if (supplied.error) return { error: supplied.error };
+  if (supplied.config) {
+    try {
+      const { provider, model, apiKey } = supplied.config;
+      return { client: providerClientFactory(provider, apiKey), model, provider, source: 'browser' };
+    } catch {
+      return { error: 'Could not initialize the selected provider. Check its settings and try again.' };
+    }
+  }
+  if (serverAI) return { client: serverAI, model: serverModel, provider: serverProvider, source: 'server' };
+  return { client: null, model: null, provider: null, source: 'none' };
 }
 
 function getSystemPrompt(mode, tone = 'balanced') {
@@ -36,16 +79,6 @@ function getSystemPrompt(mode, tone = 'balanced') {
     deep: 'Provide a thorough walkthrough, assumptions, trade-offs, edge cases, and practical verification steps.'
   };
   return (prompts[mode] || prompts.chat) + '\n\nResponse style: ' + (tones[tone] || tones.balanced);
-}
-
-function demoResponse(mode, prompt) {
-  const examples = {
-    chat: 'Demo mode is active. Your request reached NodeAI Studio, but no AI provider is configured. Add AI_API_KEY to the server environment to enable live model responses.',
-    code: 'Demo mode is active. Configure AI_API_KEY for a solution tailored to your request.\n\nExample starter:\n\nconst express = require("express");\nconst app = express();\napp.use(express.json());\n\napp.get("/api/health", (req, res) => {\n  res.json({ success: true });\n});\n\napp.listen(3000);',
-    debug: 'Demo mode is active, so a language model did not analyze your specific issue.\n\nDebugging checklist:\n1. Capture the complete error and stack trace.\n2. Reproduce the issue with the smallest input.\n3. Inspect types, asynchronous boundaries, and configuration.\n4. Add a regression test after the fix.',
-    sql: 'Demo mode is active. Configure AI_API_KEY for a query based on your schema.\n\nExample query:\n\nSELECT customer_id, SUM(total_amount) AS total_revenue\nFROM orders\nGROUP BY customer_id\nORDER BY total_revenue DESC\nLIMIT 10;'
-  };
-  return (examples[mode] || examples.chat) + '\n\nRequest received (' + prompt.length + ' characters).';
 }
 
 function validateContext(context) {
@@ -100,19 +133,36 @@ function buildMessages(request) {
 
 function providerErrorStatus(error) {
   if (error?.name === 'APIConnectionTimeoutError' || error?.name === 'APIConnectionError') return 504;
-  if (error?.status === 429 || error?.status === 503) return 503;
-  return 500;
+  const status = Number(error?.status);
+  if ([400, 401, 403, 404, 408, 409, 422, 429, 502, 503, 504].includes(status)) return status;
+  return status >= 500 ? 502 : 500;
 }
 
 function publicProviderError(status) {
-  if (status === 504) return 'The AI request timed out or could not connect. Please retry.';
+  if (status === 400 || status === 422) return 'The provider rejected this request. Check the model ID and selected provider settings.';
+  if (status === 401 || status === 403) return 'The provider rejected this API key. Check that it belongs to the selected provider and is active.';
+  if (status === 404) return 'The selected model was not found or is unavailable to this API key. Check the model ID.';
+  if (status === 408 || status === 504) return 'The AI request timed out or could not connect. Please retry.';
+  if (status === 429) return 'The provider rate limit or quota was reached. Wait a moment and check the provider usage or billing page.';
+  if (status === 502) return 'The provider returned an unexpected response. Check the model ID and try again.';
   if (status === 503) return 'The AI provider is temporarily unavailable. Please try again shortly.';
   return 'Something went wrong while generating the response. Please try again.';
 }
 
+function missingProviderResponse(res, requestId) {
+  return res.status(503).json({
+    success: false,
+    needsProvider: true,
+    error: 'No live AI provider is connected. Select Connect AI in the top bar and test a provider API key to generate real responses.',
+    requestId
+  });
+}
+
 function createApp(options = {}) {
   const ai = Object.prototype.hasOwnProperty.call(options, 'aiClient') ? options.aiClient : createAIClient();
-  const model = process.env.AI_MODEL || 'gpt-4o-mini';
+  const serverProvider = process.env.AI_PROVIDER || 'openai';
+  const model = process.env.AI_MODEL || (PROVIDERS[serverProvider] || PROVIDERS.openai).defaultModel;
+  const providerClientFactory = options.providerClientFactory || ((provider, apiKey) => createProviderClient(provider, apiKey));
   const app = express();
 
   const allowedOrigins = Array.isArray(options.allowedOrigins)
@@ -154,7 +204,7 @@ function createApp(options = {}) {
         return callback(error);
       },
       methods: ['GET', 'POST', 'DELETE'],
-      allowedHeaders: ['Content-Type', 'Accept', 'X-NodeAI-Session']
+      allowedHeaders: ['Content-Type', 'Accept', 'X-NodeAI-Session', 'X-NodeAI-Api-Key', 'X-NodeAI-Provider', 'X-NodeAI-Model']
     }));
   }
 
@@ -178,6 +228,7 @@ function createApp(options = {}) {
       status: 'ok',
       demoMode: !ai,
       model: ai ? model : null,
+      provider: ai ? serverProvider : null,
       uptimeSeconds: Math.floor(process.uptime()),
       version: APP_VERSION,
       time: new Date().toISOString()
@@ -204,8 +255,51 @@ function createApp(options = {}) {
       modes: Array.from(VALID_MODES),
       tones: Array.from(VALID_TONES),
       historyLimit: HISTORY_LIMIT,
-      streaming: true
+      streaming: true,
+      providers: Object.entries(PROVIDERS).map(([id, value]) => ({ id, label: value.label, defaultModel: value.defaultModel })),
+      credentialTransport: 'request-header-only'
     });
+  });
+
+  app.post('/api/providers/test', aiRateLimit, async (req, res) => {
+    const requestId = req.requestId || crypto.randomUUID();
+    const supplied = readBrowserProviderConfig(req);
+    if (supplied.error) return res.status(400).json({ success: false, error: supplied.error, requestId });
+
+    let client;
+    let selectedModel;
+    let selectedProvider;
+    if (supplied.config) {
+      ({ model: selectedModel, provider: selectedProvider } = supplied.config);
+      try { client = providerClientFactory(selectedProvider, supplied.config.apiKey); }
+      catch { return res.status(400).json({ success: false, error: 'Could not initialize the selected provider.', requestId }); }
+    } else if (ai) {
+      client = ai;
+      selectedModel = model;
+      selectedProvider = serverProvider;
+    } else {
+      return res.status(400).json({ success: false, error: 'Enter a provider API key before testing the connection.', requestId });
+    }
+
+    const startedAt = Date.now();
+    try {
+      const result = await client.chat.completions.create({
+        model: selectedModel,
+        messages: [{ role: 'user', content: 'Reply with exactly NODEAI_READY.' }],
+        temperature: 0,
+        max_tokens: 8
+      });
+      const answer = result.choices?.[0]?.message?.content;
+      if (typeof answer !== 'string' || !answer.trim()) {
+        return res.status(502).json({ success: false, error: 'The provider connected but returned no text. Try a different supported model.', requestId });
+      }
+      res.set('Cache-Control', 'no-store');
+      return res.json({ success: true, provider: selectedProvider, model: selectedModel, durationMs: Date.now() - startedAt, message: 'Live model connection verified.' });
+    } catch (error) {
+      const status = providerErrorStatus(error);
+      console.error('[NodeAI] provider test ' + requestId + ' failed: provider=' + selectedProvider + ' status=' + status);
+      return res.status(status).json({ success: false, error: publicProviderError(status), requestId });
+    }
   });
 
   app.post('/api/ai', aiRateLimit, async (req, res, next) => {
@@ -216,36 +310,26 @@ function createApp(options = {}) {
       return res.status(validated.error.status).json({ success: false, error: validated.error.message, requestId });
     }
     const request = validated.request;
+    const aiRequest = resolveRequestAI(req, ai, model, serverProvider, providerClientFactory);
+    if (aiRequest.error) return res.status(400).json({ success: false, error: aiRequest.error, requestId });
+    if (!aiRequest.client) return missingProviderResponse(res, requestId);
     try {
-      let answer;
-      if (!ai) {
-        answer = demoResponse(request.mode, request.prompt);
-      } else {
-        const result = await ai.chat.completions.create({
-          model,
-          messages: buildMessages(request),
-          temperature: request.tone === 'deep' ? 0.35 : 0.2,
-          max_tokens: request.tone === 'concise' ? 1200 : 3000
-        });
-        answer = result.choices?.[0]?.message?.content;
-        if (typeof answer !== 'string' || !answer.trim()) throw new Error('The AI provider returned an empty response.');
-        answer = answer.trim();
-      }
-
-      const item = {
-        id: requestId, mode: request.mode, tone: request.tone, prompt: request.prompt, answer,
-        demoMode: !ai, model: ai ? model : null, durationMs: Date.now() - startedAt,
-        contextMessageCount: request.context.length, createdAt: new Date().toISOString()
-      };
-      res.set('Cache-Control', 'no-store');
-      return res.json({
-        success: true, requestId, answer, demoMode: !ai, model: item.model,
-        durationMs: item.durationMs, createdAt: item.createdAt
+      const result = await aiRequest.client.chat.completions.create({
+        model: aiRequest.model,
+        messages: buildMessages(request),
+        temperature: request.tone === 'deep' ? 0.35 : 0.2,
+        max_tokens: request.tone === 'concise' ? 1200 : 3000
       });
+      const answer = result.choices?.[0]?.message?.content;
+      if (typeof answer !== 'string' || !answer.trim()) throw new Error('The AI provider returned an empty response.');
+      const createdAt = new Date().toISOString();
+      const durationMs = Date.now() - startedAt;
+      res.set('Cache-Control', 'no-store');
+      return res.json({ success: true, requestId, answer: answer.trim(), demoMode: false, provider: aiRequest.provider, model: aiRequest.model, durationMs, createdAt });
     } catch (error) {
       if (error.type === 'entity.too.large') return next(error);
       const status = providerErrorStatus(error);
-      console.error('[NodeAI] request ' + requestId + ' failed:', error.message);
+      console.error('[NodeAI] request ' + requestId + ' failed: provider=' + aiRequest.provider + ' status=' + status);
       return res.status(status).json({ success: false, error: publicProviderError(status), requestId });
     }
   });
@@ -258,6 +342,9 @@ function createApp(options = {}) {
       return res.status(validated.error.status).json({ success: false, error: validated.error.message, requestId });
     }
     const request = validated.request;
+    const aiRequest = resolveRequestAI(req, ai, model, serverProvider, providerClientFactory);
+    if (aiRequest.error) return res.status(400).json({ success: false, error: aiRequest.error, requestId });
+    if (!aiRequest.client) return missingProviderResponse(res, requestId);
     const controller = new AbortController();
     let clientDisconnected = false;
 
@@ -282,37 +369,26 @@ function createApp(options = {}) {
         'X-Accel-Buffering': 'no'
       });
       res.flushHeaders?.();
-      event('meta', { requestId, demoMode: !ai, model: ai ? model : null });
+      event('meta', { requestId, demoMode: false, provider: aiRequest.provider, model: aiRequest.model });
 
       let answer = '';
-      if (!ai) {
-        const demo = demoResponse(request.mode, request.prompt);
-        for (let offset = 0; offset < demo.length; offset += 72) {
-          if (controller.signal.aborted) return;
-          const chunk = demo.slice(offset, offset + 72);
-          answer += chunk;
-          event('delta', { text: chunk });
-          await new Promise((resolve) => setImmediate(resolve));
-        }
-      } else {
-        const stream = await ai.chat.completions.create({
-          model,
-          messages: buildMessages(request),
-          temperature: request.tone === 'deep' ? 0.35 : 0.2,
-          max_tokens: request.tone === 'concise' ? 1200 : 3000,
-          stream: true
-        }, { signal: controller.signal });
+      const stream = await aiRequest.client.chat.completions.create({
+        model: aiRequest.model,
+        messages: buildMessages(request),
+        temperature: request.tone === 'deep' ? 0.35 : 0.2,
+        max_tokens: request.tone === 'concise' ? 1200 : 3000,
+        stream: true
+      }, { signal: controller.signal });
 
-        for await (const chunk of stream) {
-          if (controller.signal.aborted) return;
-          const content = chunk.choices?.[0]?.delta?.content;
-          if (typeof content === 'string' && content.length) {
-            answer += content;
-            event('delta', { text: content });
-          }
+      for await (const chunk of stream) {
+        if (controller.signal.aborted) return;
+        const content = chunk.choices?.[0]?.delta?.content;
+        if (typeof content === 'string' && content.length) {
+          answer += content;
+          event('delta', { text: content });
         }
-        answer = answer.trim();
       }
+      answer = answer.trim();
 
       if (clientDisconnected || controller.signal.aborted) return;
       if (!answer.trim()) {
@@ -322,20 +398,23 @@ function createApp(options = {}) {
 
       const item = {
         id: requestId, mode: request.mode, tone: request.tone, prompt: request.prompt, answer,
-        demoMode: !ai, model: ai ? model : null, durationMs: Date.now() - startedAt,
-        contextMessageCount: request.context.length, createdAt: new Date().toISOString()
+        demoMode: false, provider: aiRequest.provider, model: aiRequest.model,
+        durationMs: Date.now() - startedAt, contextMessageCount: request.context.length, createdAt: new Date().toISOString()
       };
       event('done', {
-        requestId, demoMode: !ai, model: item.model, durationMs: item.durationMs, createdAt: item.createdAt
+        requestId, demoMode: false, provider: item.provider, model: item.model,
+        durationMs: item.durationMs, createdAt: item.createdAt
       });
       return res.end();
     } catch (error) {
       if (clientDisconnected || controller.signal.aborted || error.name === 'AbortError') return;
+      const status = providerErrorStatus(error);
+      console.error('[NodeAI] stream ' + requestId + ' failed: provider=' + aiRequest.provider + ' status=' + status);
       if (res.headersSent) {
-        event('error', { requestId, error: publicProviderError(providerErrorStatus(error)) });
+        event('error', { requestId, error: publicProviderError(status) });
         return res.end();
       }
-      return next(error);
+      return res.status(status).json({ success: false, error: publicProviderError(status), requestId });
     }
   });
 
@@ -402,8 +481,9 @@ if (require.main === module) {
 }
 
 module.exports = {
-  createApp, demoResponse, getSystemPrompt, makeRateLimiter, validateContext, validateRequest, buildMessages,
-  MAX_PROMPT_LENGTH, MAX_CONTEXT_MESSAGES, MAX_CONTEXT_CHARS, HISTORY_LIMIT
+  createApp, getSystemPrompt, makeRateLimiter, validateContext, validateRequest, buildMessages,
+  createProviderClient, readBrowserProviderConfig, resolveRequestAI, providerErrorStatus, publicProviderError,
+  PROVIDERS, MAX_PROMPT_LENGTH, MAX_CONTEXT_MESSAGES, MAX_CONTEXT_CHARS, HISTORY_LIMIT
 };
 
 function makeRateLimiter(options = {}) {

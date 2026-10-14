@@ -1,14 +1,14 @@
 # NodeAI Studio
 
-A responsive developer workspace for AI-assisted engineering questions, code generation, debugging, and SQL. Version 2.2.0 adds themed workspaces with structured settings for chat, code generation, debugging, and SQL, plus streamed responses, browser-local sessions, and resilient request states.
+A responsive developer workspace for AI-assisted engineering questions, code generation, debugging, and SQL. Version 2.3.0 adds actual provider-backed token streaming, a tested provider connection panel, and browser-supplied credentials. When no provider is connected, generation returns an explicit setup error instead of fabricated sample output.
 
-**Stack:** Node.js 22+, Express 5, OpenAI SDK, vanilla HTML/CSS/JavaScript, Node's native test runner.
+**Stack:** Node.js 22+, Express 5, OpenAI-compatible SDK clients, vanilla HTML/CSS/JavaScript, Node's native test runner.
 
 ## Application features
 
-- **Four workflows:** Chat, Code Generator, AI Debugger, and SQL Assistant each use a dedicated system prompt.
+- **Four workflows:** Chat, Code Generator, AI Debugger, and SQL Assistant each use a dedicated system prompt and real provider-backed completion.
 - **Independent workflow frontends:** each section has its own header, accent theme, starter prompts, empty state, and structured controls. Code captures language/framework/deliverable/test preference; Debug captures runtime, issue category, expected and observed behavior; SQL captures dialect, schema, and query priority.
-- **Streaming responses:** the browser renders server-sent events as the answer is generated; stop requests in progress or keep completed results.
+- **Live streaming:** the browser receives provider-generated token deltas over server-sent events; the stop button cancels in-flight requests. The server does not stream canned fallback text.
 - **Response styles:** Balanced, Concise, and Deep dive styles tune prompt guidance and output-token budgets.
 - **Multi-turn context:** chat sends a bounded set of recent user/assistant messages; system-role messages from clients are rejected.
 - **Source-file context:** attach approved text/source files up to 64 KB. The contents are inserted in your prompt; binary files are not uploaded.
@@ -17,7 +17,10 @@ A responsive developer workspace for AI-assisted engineering questions, code gen
 - **Export/copy:** copy the answer or save a Markdown report containing the prompt and response.
 - **Quick actions:** searchable command palette (Ctrl/Cmd + K), generate (Ctrl/Cmd + Enter), and history search (/).
 - **Responsive design:** reduced-motion support, dark/light themes, mobile workflow navigation, and visible keyboard focus.
-- **Safer defaults:** server-only credentials, Helmet security headers, request and prompt limits, API throttling, validated context, browser-local history, and consistent JSON errors.
+- **Provider connections:** connect OpenAI, Google Gemini, Groq, or OpenRouter through OpenAI-compatible endpoints; test a real completion before using a model.
+- **BYOK credentials:** a key can stay in page memory or, by explicit opt-in, `sessionStorage` until the tab closes. The browser sends it to the NodeAI API over HTTPS in a request header; the backend proxies it and does not persist it in app storage or return it. Only use keys you control and review provider billing/usage.
+- **No fabricated success:** if neither a server provider nor a browser key is configured, generation returns HTTP 503 with a clear connect-provider message.
+- **Safer defaults:** server-side environment credentials, Helmet security headers, request and prompt limits, API throttling, validated context, browser-local history, and consistent JSON errors.
 
 ## Run locally
 
@@ -31,9 +34,9 @@ Requirements: Node.js 22+ and npm.
 
 Open http://localhost:3000.
 
-Add AI_API_KEY to the server-side .env for live generation. AI_MODEL defaults to gpt-4o-mini. Keep secrets outside public/ and never commit .env.
+Add `AI_API_KEY` to the server-side `.env` for live generation. Set `AI_PROVIDER` to `openai`, `gemini`, `groq`, or `openrouter`; `AI_MODEL` defaults to the provider's documented default in `server.js`. Keep secrets outside `public/` and never commit `.env`. Alternatively, use **Connect AI** in the app to test a provider key for requests from that tab.
 
-Without AI_API_KEY, the backend stays in Demo mode. Demo text is labelled and is not a live model response.
+Without a server `AI_API_KEY` or a key supplied by the browser, live generation is unavailable and returns a setup error. No prewritten sample answer is presented as model output.
 
 ## Configuration
 
@@ -51,7 +54,7 @@ The published [NodeAI Studio frontend](https://mahitech580.github.io/NodeAI-Stud
 
 Conversation history is stored in browser local storage and is never written to the shared server. It can be viewed by someone with access to that browser profile, and clearing browser storage removes it. In live mode, the prompt is still sent to this server and the configured AI provider to generate a response. The API has no account login, so CORS is not authentication and the service should not be treated as a private multi-user API. Render's ephemeral filesystem is no longer used for conversation storage.
 
-The deployed backend currently operates in **Demo mode** until `AI_API_KEY` is set in the Render service's private Environment settings. Set `AI_MODEL` there only to a model supported by that key. Never place provider secrets in `public/config.js` or in GitHub.
+The Render service can use a key stored in its private Environment settings (`AI_PROVIDER`, `AI_API_KEY`, and optionally `AI_MODEL`). For a browser BYOK connection, the key is sent over HTTPS to the Render API in request headers only for the connection test and generation requests. It is not written to `localStorage`, the GitHub repository, app history, or server response bodies; by default it stays in the page's memory. The optional remember checkbox stores it in `sessionStorage` until the tab closes. Never use a shared/public browser for a sensitive API key. Provider requests can incur usage charges.
 
 ## API reference
 
@@ -59,7 +62,7 @@ The deployed backend currently operates in **Demo mode** until `AI_API_KEY` is s
 | --- | --- | --- |
 | GET | /api/health | Service health, demo/live state, configured model name, version, and uptime. |
 | GET | /api/config | Supported modes, response styles, prompt/context limits, and streaming capability. |\n| GET | /api/ready | Service readiness; does not depend on server-side history storage. |
-| POST | /api/ai | Non-streaming generation for API clients. |
+| POST | /api/providers/test | Sends a small provider request to verify the connection. |\n| POST | /api/ai | Non-streaming generation for API clients. |
 | POST | /api/ai/stream | Server-sent event stream: meta, delta, done, or error. |
 | GET | /api/history | Compatibility endpoint returning an empty list; sessions stay in the browser. |
 | DELETE | /api/history | Compatibility endpoint; the server stores no conversation history. |

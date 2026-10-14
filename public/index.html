@@ -9,9 +9,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=2.2.0">
-  <script src="config.js?v=2.2.0"></script>
-  <script src="script.js?v=2.2.0" defer></script>
+  <link rel="stylesheet" href="style.css?v=2.3.0">
+  <script src="config.js?v=2.3.0"></script>
+  <script src="script.js?v=2.3.0" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to workspace</a>
@@ -43,7 +43,7 @@
       </details>
       <div class="sidebar-bottom">
         <div class="privacy-note"><span class="privacy-dot"></span><span>History stays in this browser</span></div>
-        <div class="sidebar-footer"><span class="footer-mark">N.</span><span>Built for the next idea.</span><span class="version">v2.2</span></div>
+        <div class="sidebar-footer"><span class="footer-mark">N.</span><span>Built for the next idea.</span><span class="version">v2.3</span></div>
       </div>
     </aside>
 
@@ -51,6 +51,7 @@
       <header class="topbar">
         <div class="breadcrumbs"><span>Workspace</span><span class="crumb-divider">/</span><strong id="breadcrumbMode">AI Chat</strong></div>
         <div class="topbar-actions">
+          <button id="providerSettings" class="provider-connect-button" type="button" aria-haspopup="dialog" aria-controls="providerDialog"><span id="providerConnectDot" class="provider-connect-dot" aria-hidden="true"></span><span id="providerConnectLabel">Connect AI</span><span aria-hidden="true">↗</span></button>
           <span class="server-status checking" id="status"><span class="status-dot"></span><span id="statusText">Connecting…</span></span>
           <button id="themeToggle" class="icon-button" type="button" aria-label="Switch to light theme" title="Toggle theme"><span id="themeIcon" aria-hidden="true">☼</span></button>
           <button id="exportAnswer" class="export-button" type="button" disabled><span aria-hidden="true">⇩</span> Export</button>
@@ -63,7 +64,7 @@
             <div class="eyebrow"><span class="eyebrow-spark">✳</span> <span id="heroEyebrowText">YOUR AI-POWERED WORKBENCH</span> <span class="eyebrow-line"></span></div>
             <h1><span id="heroTitleLead">Think clearly.</span><br><span id="heroTitleAccent">Build brilliantly.</span></h1>
             <p id="heroDescription">From first sketch to final fix, turn a rough idea into a considered next step with a workspace built for developers.</p>
-            <div class="hero-trust"><span class="trust-check">✓</span> Four focused workflows <span class="trust-separator">·</span> Streaming output <span class="trust-separator">·</span> Reusable prompts</div>
+            <div class="hero-trust"><span class="trust-check">✓</span> Four focused workflows <span class="trust-separator">·</span> Live model streaming <span class="trust-separator">·</span> Reusable prompts</div>
           </div>
           <div class="hero-art" aria-hidden="true">
             <div class="art-orbit orbit-outer"></div><div class="art-orbit orbit-inner"></div>
@@ -190,6 +191,39 @@
       <button type="button" data-command="theme"><span>☼</span><span><strong>Toggle appearance</strong><small>Switch dark or light theme</small></span><kbd>T</kbd></button>
     </div>
     <div class="command-foot"><span>Choose an action</span><span><kbd>ESC</kbd> to close</span></div>
+  </dialog>
+  <dialog id="providerDialog" class="provider-dialog" aria-labelledby="providerTitle">
+    <div class="provider-dialog-head">
+      <div class="provider-dialog-brand"><span class="provider-dialog-mark">N<span>.</span></span><div><h2 id="providerTitle">Connect a live AI model</h2><p>Bring your own provider key. No canned responses.</p></div></div>
+      <button id="closeProvider" class="icon-button" type="button" aria-label="Close provider settings">×</button>
+    </div>
+    <div class="provider-dialog-body">
+      <div class="provider-live-banner"><span class="provider-live-pulse" aria-hidden="true"></span><div><strong>Live inference</strong><p>Test your key, then stream generated answers into all four workspaces.</p></div></div>
+      <label class="provider-field" for="providerSelect">AI provider
+        <select id="providerSelect">
+          <option value="gemini">Google Gemini</option>
+          <option value="openai">OpenAI</option>
+          <option value="groq">Groq</option>
+          <option value="openrouter">OpenRouter</option>
+        </select>
+      </label>
+      <label class="provider-field" for="providerModel">Model ID
+        <input id="providerModel" type="text" spellcheck="false" autocomplete="off" maxlength="128" value="gemini-3.8-flash" placeholder="e.g. gemini-3.8-flash">
+      </label>
+      <p id="providerModelHint" class="provider-help">Default model for this provider. You can replace it with any supported model ID.</p>
+      <label class="provider-field" for="providerApiKey">Provider API key
+        <input id="providerApiKey" type="password" spellcheck="false" autocomplete="new-password" maxlength="512" placeholder="Paste your provider key" aria-describedby="providerKeyHelp">
+      </label>
+      <p id="providerKeyHelp" class="provider-security-note"><strong>Credential handling:</strong> the key is sent over HTTPS to the NodeAI API only when testing or generating. The backend does not save it, log it, or return it. By default, it stays in page memory; optional tab storage lasts until this tab closes. Only enter a key you control.</p>
+      <label class="provider-remember"><input id="rememberProvider" type="checkbox"><span><strong>Keep key until this tab closes</strong><small>Uses session storage, not long-term browser storage.</small></span></label>
+      <div id="providerFeedback" class="provider-feedback" role="status" aria-live="polite">Not connected yet. Choose a provider and test a key.</div>
+      <div class="provider-dialog-actions">
+        <button id="disconnectProvider" class="provider-disconnect-button" type="button">Disconnect</button>
+        <button id="testConnect" class="provider-test-button" type="button"><span id="testConnectLabel">Test &amp; connect</span><span aria-hidden="true">↗</span></button>
+      </div>
+      <div class="provider-key-links">Create a key: <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer">Google AI Studio</a><a href="https://platform.openai.com/api-keys" target="_blank" rel="noreferrer">OpenAI</a><a href="https://console.groq.com/keys" target="_blank" rel="noreferrer">Groq</a><a href="https://openrouter.ai/keys" target="_blank" rel="noreferrer">OpenRouter</a></div>
+      <p class="provider-billing-note">Provider usage limits and billing apply. The connection test sends one small test prompt to the selected model.</p>
+    </div>
   </dialog>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 </body>
