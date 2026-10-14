@@ -7,6 +7,7 @@ A responsive developer workspace for AI-assisted engineering questions, code gen
 ## Application features
 
 - **Four workflows:** Chat, Code Generator, AI Debugger, and SQL Assistant each use a dedicated system prompt.
+- **Independent workflow frontends:** each section has its own header, accent theme, starter prompts, empty state, and structured controls. Code captures language/framework/deliverable/test preference; Debug captures runtime, issue category, expected and observed behavior; SQL captures dialect, schema, and query priority.
 - **Streaming responses:** the browser renders server-sent events as the answer is generated; stop requests in progress or keep completed results.
 - **Response styles:** Balanced, Concise, and Deep dive styles tune prompt guidance and output-token budgets.
 - **Multi-turn context:** chat sends a bounded set of recent user/assistant messages; system-role messages from clients are rejected.
