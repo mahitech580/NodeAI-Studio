@@ -17,6 +17,7 @@ const MAX_PROMPT_LENGTH = 12000;
 const MAX_CONTEXT_MESSAGES = 8;
 const MAX_CONTEXT_CHARS = 16000;
 const HISTORY_LIMIT = 50;
+const HISTORY_STORAGE_LIMIT = 2500;
 const VALID_MODES = new Set(['chat', 'code', 'debug', 'sql']);
 const VALID_TONES = new Set(['balanced', 'concise', 'deep']);
 const DEFAULT_HISTORY_FILE = process.env.HISTORY_FILE || path.join(__dirname, 'storage', 'history.json');
@@ -113,6 +114,17 @@ function publicProviderError(status) {
   return 'Something went wrong while generating the response. Please try again.';
 }
 
+function historyScope(req) {
+  const supplied = String(req.get('X-NodeAI-Session') || '').trim();
+  // The public browser app uses a random UUID stored in that browser's local storage.
+  // Requests without one are grouped by a one-way hash of their apparent client IP.
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(supplied)) {
+    return supplied.toLowerCase();
+  }
+  const ip = String(req.ip || (req.socket && req.socket.remoteAddress) || 'unknown');
+  return 'ip:' + crypto.createHash('sha256').update(ip).digest('hex').slice(0, 32);
+}
+
 function createApp(options = {}) {
   const ai = Object.prototype.hasOwnProperty.call(options, 'aiClient') ? options.aiClient : createAIClient();
   const historyFile = options.historyFile || DEFAULT_HISTORY_FILE;
@@ -157,7 +169,7 @@ function createApp(options = {}) {
         return callback(error);
       },
       methods: ['GET', 'POST', 'DELETE'],
-      allowedHeaders: ['Content-Type', 'Accept']
+      allowedHeaders: ['Content-Type', 'Accept', 'X-NodeAI-Session']
     }));
   }
 
@@ -172,7 +184,7 @@ function createApp(options = {}) {
     try {
       const parsed = JSON.parse(await fs.readFile(historyFile, 'utf8'));
       if (!Array.isArray(parsed)) throw new Error('History store must be a JSON array.');
-      return parsed.slice(0, HISTORY_LIMIT);
+      return parsed.slice(0, HISTORY_STORAGE_LIMIT);
     } catch (error) {
       if (error.code === 'ENOENT') return [];
       throw error;
@@ -184,7 +196,7 @@ function createApp(options = {}) {
     await fs.mkdir(directory, { recursive: true });
     const tempFile = historyFile + '.' + process.pid + '.' + crypto.randomUUID() + '.tmp';
     try {
-      await fs.writeFile(tempFile, JSON.stringify(entries.slice(0, HISTORY_LIMIT), null, 2) + '\n', {
+      await fs.writeFile(tempFile, JSON.stringify(entries.slice(0, HISTORY_STORAGE_LIMIT), null, 2) + '\n', {
         encoding: 'utf8',
         mode: 0o600
       });
@@ -203,7 +215,10 @@ function createApp(options = {}) {
   async function saveEntry(item) {
     await serializeHistoryWrite(async () => {
       const history = await readHistory();
-      await writeHistory([item, ...history].slice(0, HISTORY_LIMIT));
+      const scope = item.sessionScope;
+      const sameScope = history.filter((entry) => entry.sessionScope === scope);
+      const otherScopes = history.filter((entry) => entry.sessionScope !== scope);
+      await writeHistory([item, ...sameScope].slice(0, HISTORY_LIMIT).concat(otherScopes));
     });
   }
 
@@ -288,7 +303,7 @@ function createApp(options = {}) {
       const item = {
         id: requestId, mode: request.mode, tone: request.tone, prompt: request.prompt, answer,
         demoMode: !ai, model: ai ? model : null, durationMs: Date.now() - startedAt,
-        contextMessageCount: request.context.length, createdAt: new Date().toISOString()
+        contextMessageCount: request.context.length, sessionScope: historyScope(req), createdAt: new Date().toISOString()
       };
       await saveEntry(item);
       res.set('Cache-Control', 'no-store');
@@ -402,7 +417,8 @@ function createApp(options = {}) {
         : 20;
       const mode = typeof req.query.mode === 'string' ? req.query.mode : '';
       const query = typeof req.query.q === 'string' ? req.query.q.trim().toLowerCase() : '';
-      let history = await readHistory();
+      const scope = historyScope(req);
+      let history = (await readHistory()).filter((item) => item.sessionScope === scope);
 
       if (mode) {
         if (!VALID_MODES.has(mode)) return res.status(400).json({ success: false, error: 'Invalid history mode.' });
@@ -415,7 +431,8 @@ function createApp(options = {}) {
         );
       }
       res.set('Cache-Control', 'no-store');
-      return res.json({ success: true, history: history.slice(0, limit), total: history.length, limit });
+      const publicHistory = history.slice(0, limit).map(({ sessionScope, ...item }) => item);
+      return res.json({ success: true, history: publicHistory, total: history.length, limit });
     } catch (error) {
       return next(error);
     }
@@ -423,7 +440,11 @@ function createApp(options = {}) {
 
   app.delete('/api/history', async (req, res, next) => {
     try {
-      await serializeHistoryWrite(() => writeHistory([]));
+      const scope = historyScope(req);
+      await serializeHistoryWrite(async () => {
+        const history = await readHistory();
+        await writeHistory(history.filter((item) => item.sessionScope !== scope));
+      });
       return res.json({ success: true, message: 'History cleared.' });
     } catch (error) {
       return next(error);
