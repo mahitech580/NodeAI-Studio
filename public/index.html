@@ -208,9 +208,10 @@
         </select>
       </label>
       <label class="provider-field" for="providerModel">Model ID
-        <input id="providerModel" type="text" spellcheck="false" autocomplete="off" maxlength="128" value="gemini-3.8-flash" placeholder="e.g. gemini-3.8-flash">
+        <input id="providerModel" type="text" list="providerModels" spellcheck="false" autocomplete="off" maxlength="128" value="gemini-3.8-flash" placeholder="e.g. gemini-3.8-flash">
+        <datalist id="providerModels"></datalist>
       </label>
-      <p id="providerModelHint" class="provider-help">Default model for this provider. You can replace it with any supported model ID.</p>
+      <div class="provider-model-actions"><p id="providerModelHint" class="provider-help">Default model for this provider. Fetch models available to your key, or enter an ID manually.</p><button id="loadModels" class="provider-load-models" type="button"><span aria-hidden="true">⟳</span><span id="loadModelsLabel">Load models</span></button></div>
       <label class="provider-field" for="providerApiKey">Provider API key
         <input id="providerApiKey" type="password" spellcheck="false" autocomplete="new-password" maxlength="512" placeholder="Paste your provider key" aria-describedby="providerKeyHelp">
       </label>
