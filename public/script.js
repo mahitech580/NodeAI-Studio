@@ -6,7 +6,7 @@ const API_BASE_URL = String(window.NODEAI_CONFIG?.apiBaseUrl || '').trim().repla
 const API_TIMEOUT_MS = 90000;
 const PROVIDER_SESSION_KEY = 'nodeai-provider-session';
 const PROVIDER_OPTIONS = {
-  gemini: { label: 'Google Gemini', shortLabel: 'Gemini', defaultModel: 'gemini-2.5-flash', hint: 'Gemini uses Google AI Studio API keys. Billing and model access are managed by Google.' },
+  gemini: { label: 'Google Gemini', shortLabel: 'Gemini', defaultModel: 'gemini-3.8-flash', hint: 'Gemini uses Google AI Studio API keys. Billing and model access are managed by Google.' },
   openai: { label: 'OpenAI', shortLabel: 'OpenAI', defaultModel: 'gpt-4o-mini', hint: 'Use an OpenAI API key with API billing enabled; a ChatGPT subscription is separate.' },
   groq: { label: 'Groq', shortLabel: 'Groq', defaultModel: 'openai/gpt-oss-20b', hint: 'Groq provides fast inference for supported open-weight models. Check the Groq model catalog.' },
   openrouter: { label: 'OpenRouter', shortLabel: 'OpenRouter', defaultModel: 'openai/gpt-4o-mini', hint: 'Use a model ID supported by your OpenRouter account, for example the provider/model shown in its model catalog.' }
@@ -240,7 +240,7 @@ function loadProviderSession() {
     const saved = JSON.parse(raw);
     if (!saved || !Object.hasOwn(PROVIDER_OPTIONS, saved.provider) ||
         typeof saved.model !== 'string' || typeof saved.apiKey !== 'string' ||
-        !saved.apiKey || saved.apiKey.length > 512) {
+        !saved.apiKey || saved.apiKey.length > 512 || !/^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$/.test(saved.model)) {
       sessionStorage.removeItem(PROVIDER_SESSION_KEY);
       return;
     }
