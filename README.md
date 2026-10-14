@@ -1,6 +1,6 @@
 # NodeAI Studio
 
-A responsive developer workspace for AI-assisted engineering questions, code generation, debugging, and SQL. Version 2.1.0 adds streamed responses, validated multi-turn chat context, response-style controls, a command palette, and safer static-host configuration.
+A responsive developer workspace for AI-assisted engineering questions, code generation, debugging, and SQL. Version 2.2.0 adds themed workspaces with structured settings for chat, code generation, debugging, and SQL, plus streamed responses, browser-local sessions, and resilient request states.
 
 **Stack:** Node.js 22+, Express 5, OpenAI SDK, vanilla HTML/CSS/JavaScript, Node's native test runner.
 
@@ -47,7 +47,7 @@ Without AI_API_KEY, the backend stays in Demo mode. Demo text is labelled and is
 
 ### Live Render backend and GitHub Pages
 
-The published [NodeAI Studio frontend](https://mahitech580.github.io/NodeAI-Studio/) calls the [NodeAI Render API](https://nodeai-studio-api-mahitech580.onrender.com). The API exposes health, readiness, capabilities, and generation endpoints. The API's `CORS_ORIGIN` must include the exact GitHub Pages origin and the Render origin for same-origin use; the public frontend configuration contains no secret. The `X-Request-ID` header makes requests easier to correlate with server logs.
+The published [NodeAI Studio frontend](https://mahitech580.github.io/NodeAI-Studio/) calls the [NodeAI Render API](https://nodeai-studio-api-mahitech580.onrender.com). The API exposes health, readiness, capabilities, and generation endpoints. The API's `CORS_ORIGIN` must include the exact GitHub Pages origin (and any other browser origin that should be permitted); the public frontend configuration contains no secret. The `X-Request-ID` header makes requests easier to correlate with server logs.
 
 Conversation history is stored in browser local storage and is never written to the shared server. It can be viewed by someone with access to that browser profile, and clearing browser storage removes it. In live mode, the prompt is still sent to this server and the configured AI provider to generate a response. The API has no account login, so CORS is not authentication and the service should not be treated as a private multi-user API. Render's ephemeral filesystem is no longer used for conversation storage.
 

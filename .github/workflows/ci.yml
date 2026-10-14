@@ -34,8 +34,27 @@ jobs:
       - name: Run API and streaming regression tests
         run: npm test
 
-      - name: Report dependency audit findings
+      - name: Report dependency audit findings and fail on critical issues
         shell: bash
         run: |
           npm audit --json > npm-audit-report.json || true
-          node -e "const r=require('./npm-audit-report.json'); const findings=Object.entries(r.vulnerabilities||{}).map(([name,v])=>({name,severity:v.severity,range:v.range,fixAvailable:v.fixAvailable,via:(v.via||[]).map(a=>typeof a==='string'?a:{name:a.name,title:a.title,url:a.url,range:a.range})})); console.log(JSON.stringify({summary:r.metadata?.vulnerabilities,findings},null,2))"
+          node <<'NODE'
+          const fs = require('node:fs');
+          const report = JSON.parse(fs.readFileSync('npm-audit-report.json', 'utf8'));
+          const summary = report.metadata?.vulnerabilities || {};
+          const findings = Object.entries(report.vulnerabilities || {}).map(([name, item]) => ({
+            name,
+            severity: item.severity,
+            range: item.range,
+            fixAvailable: item.fixAvailable,
+            advisories: (item.via || []).map((entry) => typeof entry === 'string' ? entry : ({
+              title: entry.title,
+              url: entry.url
+            }))
+          }));
+          console.log(JSON.stringify({ summary, findings }, null, 2));
+          if (Number(summary.critical || 0) > 0) {
+            console.error('Critical dependency vulnerabilities must be resolved before merging.');
+            process.exit(1);
+          }
+          NODE
