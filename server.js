@@ -4,6 +4,7 @@ require('dotenv').config();
 
 const crypto = require('node:crypto');
 const fs = require('node:fs/promises');
+const { constants: fsConstants } = require('node:fs');
 const path = require('node:path');
 const express = require('express');
 const cors = require('cors');
@@ -122,6 +123,14 @@ function createApp(options = {}) {
   const allowedOrigins = (process.env.CORS_ORIGIN || '').split(',').map((origin) => origin.trim()).filter(Boolean);
 
   app.disable('x-powered-by');
+  // Render terminates TLS and forwards the original client address through one proxy hop.
+  // Trusting exactly one hop makes req.ip usable for per-client rate limiting.
+  app.set('trust proxy', process.env.TRUST_PROXY === 'false' ? false : 1);
+  app.use((req, res, next) => {
+    req.requestId = crypto.randomUUID();
+    res.setHeader('X-Request-ID', req.requestId);
+    next();
+  });
   app.use(helmet({
     contentSecurityPolicy: {
       directives: {
@@ -143,7 +152,9 @@ function createApp(options = {}) {
     app.use(cors({
       origin(origin, callback) {
         if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
-        return callback(new Error('Origin is not allowed by CORS.'));
+        const error = new Error('Origin is not allowed by CORS.');
+        error.status = 403;
+        return callback(error);
       },
       methods: ['GET', 'POST', 'DELETE'],
       allowedHeaders: ['Content-Type', 'Accept']
@@ -215,6 +226,28 @@ function createApp(options = {}) {
     });
   });
 
+  // Liveness is deliberately lightweight; readiness also checks the configured history store.
+  app.get('/api/ready', async (req, res) => {
+    try {
+      await readHistory();
+      await fs.access(path.dirname(historyFile), fsConstants.R_OK | fsConstants.W_OK);
+      return res.json({
+        success: true,
+        status: 'ready',
+        dependencies: { historyStorage: 'available' },
+        requestId: req.requestId
+      });
+    } catch (error) {
+      console.error('[NodeAI] readiness check failed:', error.message);
+      return res.status(503).json({
+        success: false,
+        status: 'not-ready',
+        dependencies: { historyStorage: 'unavailable' },
+        requestId: req.requestId
+      });
+    }
+  });
+
   app.get('/api/config', (req, res) => {
     res.set('Cache-Control', 'no-store');
     res.json({
@@ -230,7 +263,7 @@ function createApp(options = {}) {
 
   app.post('/api/ai', aiRateLimit, async (req, res, next) => {
     const startedAt = Date.now();
-    const requestId = crypto.randomUUID();
+    const requestId = req.requestId || crypto.randomUUID();
     const validated = validateRequest(req.body);
     if (validated.error) {
       return res.status(validated.error.status).json({ success: false, error: validated.error.message, requestId });
@@ -404,9 +437,29 @@ function createApp(options = {}) {
 
   app.use((error, req, res, next) => {
     if (res.headersSent) return next(error);
-    if (error.type === 'entity.too.large') return res.status(413).json({ success: false, error: 'Request body is too large.' });
-    console.error('[NodeAI] server error:', error.message);
-    return res.status(500).json({ success: false, error: 'Something went wrong on the server. Please try again.' });
+    if (error.type === 'entity.too.large') {
+      return res.status(413).json({
+        success: false,
+        error: 'Request body is too large.',
+        requestId: req.requestId
+      });
+    }
+    if (error.type === 'entity.parse.failed') {
+      return res.status(400).json({
+        success: false,
+        error: 'Request body must contain valid JSON.',
+        requestId: req.requestId
+      });
+    }
+    if (error.message === 'Origin is not allowed by CORS.') {
+      return res.status(403).json({
+        success: false,
+        error: 'This browser origin is not allowed.',
+        requestId: req.requestId
+      });
+    }
+    console.error('[NodeAI] server error ' + (req.requestId || '-') + ':', error.message);
+    return res.status(500).json({ success: false, error: 'Something went wrong on the server. Please try again.', requestId: req.requestId });
   });
 
   return app;
