@@ -1308,7 +1308,7 @@ async function importBrowserHistory(file) {
   try {
     const parsed = window.NodeAIDataTools.parseHistoryArchive(await readBackupFile(file));
     const confirmed = window.confirm(
-      'Add up to ' + Math.min(parsed.total, Math.max(0, LOCAL_HISTORY_LIMIT - historyCache.length)) +
+      'Add up to ' + Math.min(parsed.entries.length, Math.max(0, LOCAL_HISTORY_LIMIT - historyCache.length)) +
       ' new sessions from this backup? Existing sessions are preserved; duplicates are skipped and the 50-session limit still applies.'
     );
     if (!confirmed) return;
@@ -1372,7 +1372,7 @@ async function importBrowserSavedPrompts(file) {
   try {
     const parsed = window.NodeAIDataTools.parseSavedPromptArchive(await readBackupFile(file));
     const confirmed = window.confirm(
-      'Merge up to ' + Math.min(parsed.total, window.NodeAIDataTools.MAX_SAVED_PROMPTS) +
+      'Merge up to ' + Math.min(parsed.prompts.length, Math.max(0, window.NodeAIDataTools.MAX_SAVED_PROMPTS - savedPrompts.length)) +
       ' saved prompts into this browser? Existing prompts are kept; duplicates are skipped.'
     );
     if (!confirmed) return;
