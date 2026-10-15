@@ -581,7 +581,13 @@ function makeRateLimiter(options = {}) {
     res.set('RateLimit-Remaining', String(Math.max(0, max - bucket.count)));
     if (bucket.count > max) {
       res.set('Retry-After', String(Math.max(1, Math.ceil((bucket.startedAt + windowMs - time) / 1000))));
-      return res.status(429).json({ success: false, error: 'Too many requests. Please wait a moment and try again.' });
+      res.set('Cache-Control', 'no-store');
+      return res.status(429).json({
+        success: false,
+        error: 'Too many requests. Please wait a moment and try again.',
+        requestId: req.requestId || null,
+        retryAfterSeconds: Math.max(1, Math.ceil((bucket.startedAt + windowMs - time) / 1000))
+      });
     }
     return next();
   };
