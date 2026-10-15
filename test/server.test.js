@@ -3,7 +3,7 @@
 const packageLock = require('../package-lock.json');
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { createApp, MAX_PROMPT_LENGTH } = require('../server');
+const { createApp, MAX_PROMPT_LENGTH, getSystemPrompt } = require('../server');
 const { renderMarkdown } = require('../public/markdown');
 
 async function makeServer(t, options = {}) {
@@ -55,6 +55,24 @@ test('public config describes modes, tones, stream support, and compatible provi
   assert.deepEqual(body.providers.map((provider) => provider.id), ['openai', 'gemini', 'groq', 'openrouter']);
   assert.equal(body.credentialTransport, 'request-header-only');
   assert.equal(JSON.stringify(body).includes('apiKey'), false);
+});
+
+
+test('each AI workspace prompt sets accurate, verifiable output expectations', () => {
+  const code = getSystemPrompt('code', 'balanced');
+  const debug = getSystemPrompt('debug', 'deep');
+  const sql = getSystemPrompt('sql', 'balanced');
+  const chat = getSystemPrompt('chat', 'concise');
+  assert.match(code, /runnable code/i);
+  assert.match(code, /do not silently replace important logic/i);
+  assert.match(debug, /separate confirmed evidence from hypotheses/i);
+  assert.match(debug, /regression test/i);
+  assert.match(sql, /Never execute SQL/i);
+  assert.match(sql, /destructive changes/i);
+  assert.match(chat, /state uncertainty/i);
+  assert.match(code, /Response style: Balance clarity and completeness/);
+  assert.match(debug, /Response style: Provide a thorough walkthrough/);
+  assert.match(chat, /Response style: Keep the response concise/);
 });
 
 test('AI endpoint rejects invalid prompts, modes, tones and context', async (t) => {
