@@ -1,6 +1,6 @@
 # NodeAI Studio
 
-A responsive developer workspace for AI-assisted engineering questions, code generation, debugging, and SQL. Version 2.5.1 adds portable, validated JSON backups for session history and saved prompts, first-token latency and estimated output throughput, secure Markdown rendering, copyable code blocks, raw/rendered output switching, response regeneration, provider-backed model discovery, and tested browser-supplied credentials. When no provider is connected, generation returns an explicit setup error instead of fabricated sample output.
+A responsive developer workspace for AI-assisted engineering questions, code generation, debugging, and SQL. Version 2.6.0 refreshes the studio interface with collapsible desktop navigation and guided first-run provider setup, while retaining portable, validated browser backups, first-token latency and estimated throughput, secure Markdown output, response regeneration, model discovery, and browser-supplied credentials. When no provider is connected, generation returns an explicit setup error instead of fabricated sample output.
 
 **Stack:** Node.js 22+, Express 5, OpenAI-compatible SDK clients, vanilla HTML/CSS/JavaScript, Node's native test runner.
 
@@ -20,7 +20,7 @@ A responsive developer workspace for AI-assisted engineering questions, code gen
 - **Rich output:** render headings, lists, quotations, tables, safe links, and inline formatting; switch between rendered output and raw Markdown; copy individual code blocks; and use lightweight syntax highlighting without extra runtime dependencies.
 - **Iteration:** regenerate a response for the active prompt, restore a session with formatted output, copy answers, or save a Markdown report containing the prompt and response.
 - **Quick actions:** searchable command palette (Ctrl/Cmd + K), generate (Ctrl/Cmd + Enter), and history search (/).
-- **Responsive design:** reduced-motion support, dark/light themes, mobile workflow navigation, and visible keyboard focus.
+- **Responsive design:** a refreshed navy/indigo studio theme, collapsible desktop sidebar, focused workspace cards, first-run provider checklist, reduced-motion support, dark/light themes, mobile workflow navigation, and visible keyboard focus.
 - **Provider connections:** connect OpenAI, Google Gemini, Groq, or OpenRouter through OpenAI-compatible endpoints; test a real completion before using a model. Fetch model IDs available to your key and choose one from suggestions, or enter a supported model ID manually.
 - **BYOK credentials:** a key can stay in page memory or, by explicit opt-in, `sessionStorage` until the tab closes. The browser sends it to the NodeAI API over HTTPS in a request header; the backend proxies it and does not persist it in app storage or return it. Only use keys you control and review provider billing/usage.
 - **No fabricated success:** if neither a server provider nor a browser key is configured, generation returns HTTP 503 with a clear connect-provider message.
