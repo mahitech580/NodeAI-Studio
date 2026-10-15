@@ -4,6 +4,7 @@ const packageLock = require('../package-lock.json');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { createApp, MAX_PROMPT_LENGTH } = require('../server');
+const { renderMarkdown } = require('../public/markdown');
 
 async function makeServer(t, options = {}) {
   const app = createApp({
@@ -215,7 +216,7 @@ test('static workspace contains advanced controls and serves source assets', asy
   ]) {
     assert.ok(html.includes(selector), selector);
   }
-  for (const asset of ['/script.js', '/style.css', '/config.js']) {
+  for (const asset of ['/script.js', '/style.css', '/config.js', '/markdown.js']) {
     assert.equal((await fetch(base + asset)).status, 200, asset);
   }
   const script = await (await fetch(base + '/script.js')).text();
@@ -394,6 +395,54 @@ test('invalid BYOK provider and model identifiers are rejected before provider c
     ...key, 'X-NodeAI-Provider': 'gemini', 'X-NodeAI-Model': 'bad model with spaces'
   })).status, 400);
   assert.equal(calls, 0);
+});
+
+
+test('Markdown renderer formats headings, inline emphasis, lists, quotes, tables, and code blocks', () => {
+  const answer = [
+    '# API review',
+    'Use **validation** and *clear naming* with `request.body`.',
+    '',
+    '- First check',
+    '- Second check',
+    '',
+    '> Keep errors predictable.',
+    '',
+    '```js',
+    'const ok = true;',
+    '```',
+    '',
+    '| Status | Meaning |',
+    '| --- | --- |',
+    '| 200 | Success |'
+  ].join('\n');
+  const html = renderMarkdown(answer);
+  assert.match(html, /<h1>API review<\/h1>/);
+  assert.match(html, /<strong>validation<\/strong>/);
+  assert.match(html, /<em>clear naming<\/em>/);
+  assert.match(html, /<code>request.body<\/code>/);
+  assert.match(html, /<ul>[\s\S]*<li>First check<\/li>[\s\S]*<li>Second check<\/li>[\s\S]*<\/ul>/);
+  assert.match(html, /<blockquote>[\s\S]*Keep errors predictable[\s\S]*<\/blockquote>/);
+  assert.match(html, /data-copy-code/);
+  assert.match(html, /const ok = true;/);
+  assert.match(html, /<thead>/);
+  assert.match(html, /<td>200<\/td>/);
+});
+
+test('Markdown renderer escapes HTML and refuses executable links', () => {
+  const html = renderMarkdown('<img src=x onerror=alert(1)>\n\n[run](javascript:alert(1))\n\n```html\n<script>alert(1)</script>\n```');
+  assert.match(html, /&lt;img src=x onerror=alert\(1\)&gt;/);
+  assert.doesNotMatch(html, /<img\b/i);
+  assert.doesNotMatch(html, /href=["']javascript:/i);
+  assert.match(html, /\[run\]\(javascript:alert\(1\)\)/);
+  assert.match(html, /&lt;script&gt;alert\(1\)&lt;\/script&gt;/);
+});
+
+test('Markdown renderer only makes HTTP(S) and mailto links clickable', () => {
+  const html = renderMarkdown('[docs](https://example.com/guide?a=1&b=2) and [email](mailto:help@example.com).');
+  assert.match(html, /href="https:\/\/example\.com\/guide\?a=1&amp;b=2"/);
+  assert.match(html, /href="mailto:help@example\.com"/);
+  assert.match(html, /rel="noopener noreferrer"/);
 });
 
 test('dependency lockfile uses patched proxy-addr release', () => {
