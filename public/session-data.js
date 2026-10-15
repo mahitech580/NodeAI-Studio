@@ -61,7 +61,7 @@
     }
     const prompt = item.prompt.trim();
     if (!prompt || prompt.length > MAX_PROMPT_LENGTH || item.answer.length > MAX_ANSWER_LENGTH) return null;
-    const createdAt = safeTimestamp(item.createdAt, new Date(0).toISOString());
+    const createdAt = safeTimestamp(item.createdAt, new Date().toISOString());
     const fallbackId = 'imported-' + index + '-' + createdAt.replace(/[^0-9]/g, '').slice(0, 14);
     const duration = Number(item.durationMs);
     return {
@@ -70,7 +70,7 @@
       tone: TONES.has(item.tone) ? item.tone : 'balanced',
       prompt,
       answer: item.answer,
-      demoMode: Boolean(item.demoMode),
+      demoMode: item.demoMode === true,
       model: typeof item.model === 'string' && item.model.trim() && item.model.length <= 128 ? item.model.trim() : null,
       durationMs: Number.isFinite(duration) && duration >= 0 && duration <= 86400000 ? duration : null,
       createdAt
@@ -87,7 +87,7 @@
       id: safeId(item.id, fallbackId),
       mode: item.mode,
       prompt,
-      savedAt: safeTimestamp(item.savedAt, new Date(0).toISOString())
+      savedAt: safeTimestamp(item.savedAt, new Date().toISOString())
     };
   }
 
