@@ -1,6 +1,6 @@
 # NodeAI Studio
 
-A responsive developer workspace for AI-assisted engineering questions, code generation, debugging, and SQL. Version 2.3.1 adds provider-backed model discovery to the real-time streaming workflow, alongside the tested provider connection panel and browser-supplied credentials. When no provider is connected, generation returns an explicit setup error instead of fabricated sample output.
+A responsive developer workspace for AI-assisted engineering questions, code generation, debugging, and SQL. Version 2.4.0 adds secure Markdown rendering for live answers, copyable syntax-highlighted code blocks, raw/rendered output switching, response regeneration, provider-backed model discovery, and tested browser-supplied credentials. When no provider is connected, generation returns an explicit setup error instead of fabricated sample output.
 
 **Stack:** Node.js 22+, Express 5, OpenAI-compatible SDK clients, vanilla HTML/CSS/JavaScript, Node's native test runner.
 
@@ -14,7 +14,8 @@ A responsive developer workspace for AI-assisted engineering questions, code gen
 - **Source-file context:** attach approved text/source files up to 64 KB. The contents are inserted in your prompt; binary files are not uploaded.
 - **Reusable prompts:** save up to 100 templates in browser-local storage and reload/remove them by workflow.
 - **Session history:** the latest 50 sessions are stored in this browser only; search, restore, or clear them. The shared backend does not persist prompts or responses.
-- **Export/copy:** copy the answer or save a Markdown report containing the prompt and response.
+- **Rich output:** render headings, lists, quotations, tables, safe links, and inline formatting; switch between rendered output and raw Markdown; copy individual code blocks; and use lightweight syntax highlighting without extra runtime dependencies.
+- **Iteration:** regenerate a response for the active prompt, restore a session with formatted output, copy answers, or save a Markdown report containing the prompt and response.
 - **Quick actions:** searchable command palette (Ctrl/Cmd + K), generate (Ctrl/Cmd + Enter), and history search (/).
 - **Responsive design:** reduced-motion support, dark/light themes, mobile workflow navigation, and visible keyboard focus.
 - **Provider connections:** connect OpenAI, Google Gemini, Groq, or OpenRouter through OpenAI-compatible endpoints; test a real completion before using a model. Fetch model IDs available to your key and choose one from suggestions, or enter a supported model ID manually.
@@ -42,15 +43,16 @@ Without a server `AI_API_KEY` or a key supplied by the browser, live generation 
 
 | Variable | Description |
 | --- | --- |
-| AI_API_KEY | Optional server-side OpenAI API key. Unset means Demo mode. |
-| AI_MODEL | Optional model name; defaults to gpt-4o-mini. |
+| AI_API_KEY | Optional server-side API key for the selected provider. If absent, connect a browser key in the UI. |
+| AI_PROVIDER | `openai` (default), `gemini`, `groq`, or `openrouter`. | 
+| AI_MODEL | Optional model name; defaults depend on `AI_PROVIDER`. |
 | PORT | HTTP port; defaults to 3000. |
 | NODE_ENV | Set production on a production host. |
 | CORS_ORIGIN | Comma-separated exact allowed frontend origins for cross-origin use. |
 
 ### Live Render backend and GitHub Pages
 
-The published [NodeAI Studio frontend](https://mahitech580.github.io/NodeAI-Studio/) calls the [NodeAI Render API](https://nodeai-studio-api-mahitech580.onrender.com). The API exposes health, readiness, capabilities, and generation endpoints. The API's `CORS_ORIGIN` must include the exact GitHub Pages origin (and any other browser origin that should be permitted); the public frontend configuration contains no secret. The `X-Request-ID` header makes requests easier to correlate with server logs.
+The published [NodeAI Studio frontend](https://mahitech580.github.io/NodeAI-Studio/) calls the [NodeAI Render API](https://nodeai-studio-api-mahitech580.onrender.com). The API exposes health, readiness, capabilities, provider-connection testing, model discovery, and live generation endpoints. The API's `CORS_ORIGIN` must include the exact GitHub Pages origin (and any other browser origin that should be permitted); the public frontend configuration contains no secret. The `X-Request-ID` header makes requests easier to correlate with server logs.
 
 Conversation history is stored in browser local storage and is never written to the shared server. It can be viewed by someone with access to that browser profile, and clearing browser storage removes it. In live mode, the prompt is still sent to this server and the configured AI provider to generate a response. The API has no account login, so CORS is not authentication and the service should not be treated as a private multi-user API. Render's ephemeral filesystem is no longer used for conversation storage.
 
@@ -61,8 +63,11 @@ The Render service can use a key stored in its private Environment settings (`AI
 | Method | Endpoint | Description |
 | --- | --- | --- |
 | GET | /api/health | Service health, demo/live state, configured model name, version, and uptime. |
-| GET | /api/config | Supported modes, response styles, prompt/context limits, and streaming capability. |\n| GET | /api/ready | Service readiness; does not depend on server-side history storage. |
-| POST | /api/providers/test | Sends a small provider request to verify the connection. |\n| POST | /api/providers/models | Lists model IDs visible to the selected provider key; returns IDs only. |\n| POST | /api/ai | Non-streaming generation for API clients. |
+| GET | /api/config | Supported modes, response styles, prompt/context limits, and streaming capability. | 
+| GET | /api/ready | Service readiness; does not depend on server-side history storage. |
+| POST | /api/providers/test | Sends a small provider request to verify the connection. | 
+| POST | /api/providers/models | Lists model IDs visible to the selected provider key; returns IDs only. | 
+| POST | /api/ai | Non-streaming generation for API clients. |
 | POST | /api/ai/stream | Server-sent event stream: meta, delta, done, or error. |
 | GET | /api/history | Compatibility endpoint returning an empty list; sessions stay in the browser. |
 | DELETE | /api/history | Compatibility endpoint; the server stores no conversation history. |
