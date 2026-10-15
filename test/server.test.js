@@ -570,5 +570,5 @@ test('Markdown renderer only makes HTTP(S) and mailto links clickable', () => {
 
 test('dependency lockfile uses patched proxy-addr release', () => {
   assert.equal(packageLock.packages['node_modules/proxy-addr'].version, '2.0.8');
-  assert.equal(packageLock.packages[''].version, '2.4.1');
+  assert.equal(packageLock.packages[''].version, '2.5.0');
 });
