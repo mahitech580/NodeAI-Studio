@@ -1280,8 +1280,8 @@ async function importBrowserHistory(file) {
   try {
     const parsed = window.NodeAIDataTools.parseHistoryArchive(await readBackupFile(file));
     const confirmed = window.confirm(
-      'Merge up to ' + Math.min(parsed.total, window.NodeAIDataTools.MAX_HISTORY_ENTRIES) +
-      ' sessions from this backup into the history saved in this browser? Existing sessions are kept; duplicates are skipped.'
+      'Add up to ' + Math.min(parsed.total, Math.max(0, LOCAL_HISTORY_LIMIT - historyCache.length)) +
+      ' new sessions from this backup? Existing sessions are preserved; duplicates are skipped and the 50-session limit still applies.'
     );
     if (!confirmed) return;
     const existingIds = new Set(historyCache.map((item) => item.id));
@@ -1301,22 +1301,21 @@ async function importBrowserHistory(file) {
       imported.push(item);
     }
 
-    const merged = [...imported, ...historyCache]
-      .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
-    const bounded = [];
-    let storageSkipped = 0;
-    for (const item of merged) {
-      if (bounded.length >= LOCAL_HISTORY_LIMIT) {
-        storageSkipped++;
-        continue;
-      }
-      const candidate = [...bounded, item];
+    const importCapacity = Math.max(0, LOCAL_HISTORY_LIMIT - historyCache.length);
+    const candidates = imported.slice(0, importCapacity);
+    let storageSkipped = imported.length - candidates.length;
+    const acceptedImports = [];
+    for (const item of candidates) {
+      const candidate = [...historyCache, ...acceptedImports, item];
       if (new TextEncoder().encode(JSON.stringify(candidate)).length > 1800 * 1024) {
         storageSkipped++;
         continue;
       }
-      bounded.push(item);
+      acceptedImports.push(item);
     }
+    const merged = [...historyCache, ...acceptedImports]
+      .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+    const bounded = merged.slice(0, LOCAL_HISTORY_LIMIT);
     historyCache = bounded;
     if (!safelyWriteStorage(HISTORY_STORAGE_KEY, JSON.stringify(historyCache))) {
       historyCache = previousHistory;
@@ -1326,7 +1325,7 @@ async function importBrowserHistory(file) {
     }
     updateSessionMetrics();
     renderHistory();
-    showToast('Imported ' + imported.length + ' sessions · ' + duplicates + ' duplicates ignored' +
+    showToast('Imported ' + acceptedImports.length + ' sessions · ' + duplicates + ' duplicates ignored' +
       (parsed.skipped ? ' · ' + parsed.skipped + ' invalid skipped' : '') +
       (storageSkipped ? ' · ' + storageSkipped + ' storage/limit skipped' : ''));
   } catch (error) {
