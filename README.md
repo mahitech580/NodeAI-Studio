@@ -1,6 +1,6 @@
 # NodeAI Studio
 
-A responsive developer workspace for AI-assisted engineering questions, code generation, debugging, and SQL. Version 2.5.0 adds portable, validated JSON backups for session history and saved prompts, alongside live response statistics, secure Markdown rendering, copyable code blocks, raw/rendered output switching, response regeneration, provider-backed model discovery, and tested browser-supplied credentials. When no provider is connected, generation returns an explicit setup error instead of fabricated sample output.
+A responsive developer workspace for AI-assisted engineering questions, code generation, debugging, and SQL. Version 2.5.0 adds portable, validated JSON backups for session history and saved prompts, first-token latency and estimated output throughput, secure Markdown rendering, copyable code blocks, raw/rendered output switching, response regeneration, provider-backed model discovery, and tested browser-supplied credentials. When no provider is connected, generation returns an explicit setup error instead of fabricated sample output.
 
 **Stack:** Node.js 22+, Express 5, OpenAI-compatible SDK clients, vanilla HTML/CSS/JavaScript, Node's native test runner.
 
@@ -15,7 +15,7 @@ A responsive developer workspace for AI-assisted engineering questions, code gen
 - **Reusable prompts:** save up to 100 templates in browser-local storage and reload/remove them by workflow.
 - **Session history:** the latest 50 sessions are stored in this browser only; search, restore, or clear them. The shared backend does not persist prompts or responses.
 - **Portable backups:** export/import browser session history and reusable prompts as versioned JSON archives. Imports validate structure, clamp fields and counts, ignore duplicates, and enforce 2 MB file/1.8 MB history-storage limits. Backups can contain the prompts and full answers you chose to save, so treat exported files as sensitive.
-- **Live response statistics:** count words, characters, lines, and fenced code blocks while model output streams into the response pane.
+- **Live response statistics:** count words, characters, lines, and fenced code blocks while output streams. After a response completes, display first-token latency and clearly labelled estimated tokens/second; the estimate is based on characters, not provider-reported token usage.
 - **Rich output:** render headings, lists, quotations, tables, safe links, and inline formatting; switch between rendered output and raw Markdown; copy individual code blocks; and use lightweight syntax highlighting without extra runtime dependencies.
 - **Iteration:** regenerate a response for the active prompt, restore a session with formatted output, copy answers, or save a Markdown report containing the prompt and response.
 - **Quick actions:** searchable command palette (Ctrl/Cmd + K), generate (Ctrl/Cmd + Enter), and history search (/).
