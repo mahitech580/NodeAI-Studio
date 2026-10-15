@@ -1,7 +1,7 @@
 {
   "name": "nodeai-studio",
-  "version": "2.5.0",
-  "description": "A real-time AI developer workspace with provider connections, streamed generation, formatted code, response statistics, debugging, SQL, and chat.",
+  "version": "2.5.1",
+  "description": "A real-time AI developer workspace with live provider streaming, portable browser backups, inference metrics, formatted code, debugging, and SQL.",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
