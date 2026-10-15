@@ -1279,6 +1279,11 @@ async function importBrowserHistory(file) {
   const previousHistory = historyCache;
   try {
     const parsed = window.NodeAIDataTools.parseHistoryArchive(await readBackupFile(file));
+    const confirmed = window.confirm(
+      'Merge up to ' + Math.min(parsed.total, window.NodeAIDataTools.MAX_HISTORY_ENTRIES) +
+      ' sessions from this backup into the history saved in this browser? Existing sessions are kept; duplicates are skipped.'
+    );
+    if (!confirmed) return;
     const existingIds = new Set(historyCache.map((item) => item.id));
     const semanticKey = (item) => JSON.stringify([item.mode, item.prompt, item.answer]);
     const existingSemantic = new Set(historyCache.map(semanticKey));
@@ -1339,6 +1344,11 @@ async function importBrowserSavedPrompts(file) {
   const previousPrompts = savedPrompts;
   try {
     const parsed = window.NodeAIDataTools.parseSavedPromptArchive(await readBackupFile(file));
+    const confirmed = window.confirm(
+      'Merge up to ' + Math.min(parsed.total, window.NodeAIDataTools.MAX_SAVED_PROMPTS) +
+      ' saved prompts into this browser? Existing prompts are kept; duplicates are skipped.'
+    );
+    if (!confirmed) return;
     const existingKeys = new Set(savedPrompts.map((item) => item.id));
     const semanticKey = (item) => JSON.stringify([item.mode, item.prompt]);
     const semanticKeys = new Set(savedPrompts.map(semanticKey));
