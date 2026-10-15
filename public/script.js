@@ -30,6 +30,7 @@ const elements = {
   promptLabel: $('#promptLabel'), responseTitle: $('#responseTitle'), responseSubtitle: $('#responseSubtitle'),
   emptyTitle: $('#emptyTitle'), emptyDescription: $('#emptyDescription'), emptyTip: $('#emptyTip'),
   outputTag: $('#outputTag'), modeSettingsCards: $$('[data-settings]'),
+  regenerateAnswer: $('#regenerateAnswer'), toggleRawAnswer: $('#toggleRawAnswer'),
   codeLanguage: $('#codeLanguage'), codeFramework: $('#codeFramework'), codeDeliverable: $('#codeDeliverable'),
   codeIncludeTests: $('#codeIncludeTests'), debugRuntime: $('#debugRuntime'), debugCategory: $('#debugCategory'),
   debugExpected: $('#debugExpected'), debugObserved: $('#debugObserved'),
@@ -40,6 +41,7 @@ const elements = {
   clearPrompt: $('#clearPrompt'), promptFile: $('#promptFile'), newSession: $('#newSession'),
   emptyResponse: $('#emptyResponse'), responseResult: $('#responseResult'), answerText: $('#answerText'),
   resultType: $('#resultType'), resultTime: $('#resultTime'), resultModel: $('#resultModel'),
+  requestIdAction: $('#requestIdAction'),
   responseFootnote: $('#responseFootnote'), copyAnswer: $('#copyAnswer'), copyAnswerBottom: $('#copyAnswerBottom'),
   exportAnswer: $('#exportAnswer'), status: $('#status'), statusText: $('#statusText'),
   themeToggle: $('#themeToggle'), themeIcon: $('#themeIcon'), history: $('#history'),
@@ -444,6 +446,14 @@ function disconnectProvider() {
   showToast('Browser provider disconnected', 'warning');
 }
 
+function updateRequestId(requestId) {
+  const id = typeof requestId === 'string' ? requestId.trim() : '';
+  elements.requestIdAction.dataset.requestId = id;
+  elements.requestIdAction.disabled = !id;
+  elements.requestIdAction.textContent = id ? 'ID ' + id.slice(0, 8) : 'ID —';
+  elements.requestIdAction.title = id ? 'Copy full request ID: ' + id : 'Request IDs are shown after a response starts';
+}
+
 function updatePromptCount() {
   const length = elements.prompt.value.length;
   const max = serverConfig.maxPromptLength || 12000;
@@ -504,10 +514,16 @@ function updateMode(mode) {
 function showEmptyResponse() {
   currentAnswer = '';
   currentResult = null;
+  updateRequestId('');
   elements.emptyResponse.hidden = false;
   elements.responseResult.hidden = true;
   elements.answerText.textContent = '';
   elements.answerText.classList.remove('streaming-text');
+  elements.answerText.classList.remove('is-raw');
+  elements.answerText.dataset.view = 'rendered';
+  elements.regenerateAnswer.disabled = true;
+  elements.toggleRawAnswer.disabled = true;
+  elements.toggleRawAnswer.textContent = 'Raw';
   elements.copyAnswer.disabled = true;
   elements.copyAnswerBottom.disabled = true;
   elements.exportAnswer.disabled = true;
@@ -521,9 +537,11 @@ function showEmptyResponse() {
   elements.resultModel.textContent = 'Response ready';
 }
 
+
 function showResponse(answer, metadata = {}) {
   currentAnswer = String(answer || '');
   currentResult = metadata;
+  updateRequestId(metadata.requestId);
   elements.emptyResponse.hidden = true;
   elements.responseResult.hidden = false;
   elements.answerText.textContent = currentAnswer;
@@ -723,8 +741,13 @@ function restoreSession(item) {
   elements.toneSelect.value = ['balanced', 'concise', 'deep'].includes(item.tone) ? item.tone : 'balanced';
   updatePromptCount();
   showResponse(item.answer || '', {
-    demoMode: Boolean(item.demoMode), model: item.model, durationMs: item.durationMs, createdAt: item.createdAt
+    demoMode: Boolean(item.demoMode), model: item.model, durationMs: item.durationMs, createdAt: item.createdAt, requestId: item.id
   });
+  elements.answerText.innerHTML = window.NodeAIMarkdown.renderMarkdown(item.answer || '');
+  elements.answerText.dataset.view = 'rendered';
+  elements.toggleRawAnswer.disabled = !item.answer;
+  elements.toggleRawAnswer.textContent = 'Raw';
+  elements.regenerateAnswer.disabled = !item.prompt;
   elements.latencyMetric.textContent = formatDuration(item.durationMs) || '—';
   elements.latencyCaption.textContent = 'Selected from history';
   showToast('Session restored');
@@ -876,6 +899,10 @@ async function generateResponse() {
     }
   }, RENDER_COLD_START_HINT_MS);
   elements.generate.disabled = true;
+  elements.regenerateAnswer.disabled = true;
+  elements.toggleRawAnswer.disabled = true;
+  elements.answerText.dataset.view = 'streaming';
+  elements.answerText.classList.remove('is-raw');
   elements.generate.classList.add('is-loading');
   elements.generateLabel.textContent = 'Thinking…';
   elements.stopGeneration.hidden = false;
@@ -938,6 +965,13 @@ async function generateResponse() {
     if (streamError) throw new Error(streamError);
     if (!completed) throw new Error('The stream ended before the completion event arrived.');
     currentResult = streamMeta;
+    updateRequestId(streamMeta.requestId);
+    elements.answerText.innerHTML = window.NodeAIMarkdown.renderMarkdown(currentAnswer);
+    elements.answerText.dataset.view = 'rendered';
+    elements.toggleRawAnswer.disabled = !currentAnswer;
+    elements.toggleRawAnswer.textContent = 'Raw';
+    elements.toggleRawAnswer.title = 'Show the exact Markdown returned by the model';
+    elements.answerText.classList.remove('streaming-text');
     elements.resultType.className = 'result-type ' + (streamMeta.demoMode ? 'demo-result' : 'live-result');
     elements.resultType.textContent = streamMeta.demoMode ? 'DEMO RESPONSE' : 'MODEL RESPONSE';
     elements.resultTime.textContent = formatDuration(streamMeta.durationMs);
@@ -945,6 +979,7 @@ async function generateResponse() {
     elements.answerText.classList.remove('streaming-text');
     elements.responseFootnote.textContent = 'Live response complete · review before using in production';
     elements.exportAnswer.disabled = !currentAnswer;
+    elements.regenerateAnswer.disabled = !currentAnswer;
 
     if (currentMode === 'chat') {
       addConversationTurn('user', rawPrompt);
@@ -1198,6 +1233,24 @@ elements.prompt.addEventListener('input', updatePromptCount);
 elements.toneSelect.addEventListener('change', () => safelyWriteStorage('nodeai-tone', elements.toneSelect.value));
 elements.savePrompt.addEventListener('click', saveCurrentPrompt);
 elements.generate.addEventListener('click', generateResponse);
+elements.regenerateAnswer.addEventListener('click', () => generateResponse());
+elements.toggleRawAnswer.addEventListener('click', () => {
+  if (!currentAnswer) return;
+  const currentlyRaw = elements.answerText.dataset.view === 'raw';
+  if (currentlyRaw) {
+    elements.answerText.innerHTML = window.NodeAIMarkdown.renderMarkdown(currentAnswer);
+    elements.answerText.dataset.view = 'rendered';
+    elements.answerText.classList.remove('is-raw');
+    elements.toggleRawAnswer.textContent = 'Raw';
+    elements.toggleRawAnswer.title = 'Show the exact Markdown returned by the model';
+  } else {
+    elements.answerText.textContent = currentAnswer;
+    elements.answerText.dataset.view = 'raw';
+    elements.answerText.classList.add('is-raw');
+    elements.toggleRawAnswer.textContent = 'Rendered';
+    elements.toggleRawAnswer.title = 'Render Markdown formatting and show copyable code blocks';
+  }
+});
 elements.stopGeneration.addEventListener('click', () => { if (requestController) requestController.abort(); });
 elements.promptFile.addEventListener('change', () => handlePromptFile(elements.promptFile.files?.[0]));
 elements.clearPrompt.addEventListener('click', () => {
@@ -1209,6 +1262,13 @@ elements.newSession.addEventListener('click', () => {
   if (elements.commandDialog.open) closeCommandPalette();
   newSession();
 });
+elements.answerText.addEventListener('click', (event) => {
+  const button = event.target.closest('[data-copy-code]');
+  if (!button) return;
+  const code = $('code', button.closest('.markdown-code-block'))?.textContent || '';
+  copyText(code);
+});
+elements.requestIdAction.addEventListener('click', () => copyText(elements.requestIdAction.dataset.requestId || ''));
 elements.copyAnswer.addEventListener('click', () => copyText(currentAnswer));
 elements.copyAnswerBottom.addEventListener('click', () => copyText(currentAnswer));
 elements.exportAnswer.addEventListener('click', exportAnswer);

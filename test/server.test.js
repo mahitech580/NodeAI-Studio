@@ -3,7 +3,8 @@
 const packageLock = require('../package-lock.json');
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { createApp, MAX_PROMPT_LENGTH } = require('../server');
+const { createApp, MAX_PROMPT_LENGTH, getSystemPrompt } = require('../server');
+const { renderMarkdown } = require('../public/markdown');
 
 async function makeServer(t, options = {}) {
   const app = createApp({
@@ -54,6 +55,24 @@ test('public config describes modes, tones, stream support, and compatible provi
   assert.deepEqual(body.providers.map((provider) => provider.id), ['openai', 'gemini', 'groq', 'openrouter']);
   assert.equal(body.credentialTransport, 'request-header-only');
   assert.equal(JSON.stringify(body).includes('apiKey'), false);
+});
+
+
+test('each AI workspace prompt sets accurate, verifiable output expectations', () => {
+  const code = getSystemPrompt('code', 'balanced');
+  const debug = getSystemPrompt('debug', 'deep');
+  const sql = getSystemPrompt('sql', 'balanced');
+  const chat = getSystemPrompt('chat', 'concise');
+  assert.match(code, /runnable code/i);
+  assert.match(code, /do not silently replace important logic/i);
+  assert.match(debug, /separate confirmed evidence from hypotheses/i);
+  assert.match(debug, /regression test/i);
+  assert.match(sql, /Never execute SQL/i);
+  assert.match(sql, /destructive changes/i);
+  assert.match(chat, /state uncertainty/i);
+  assert.match(code, /Response style: Balance clarity and completeness/);
+  assert.match(debug, /Response style: Provide a thorough walkthrough/);
+  assert.match(chat, /Response style: Keep the response concise/);
 });
 
 test('AI endpoint rejects invalid prompts, modes, tones and context', async (t) => {
@@ -211,11 +230,13 @@ test('static workspace contains advanced controls and serves source assets', asy
   for (const selector of [
     'id="toneSelect"', 'id="stopGeneration"', 'id="commandDialog"', 'id="savedPrompts"',
     'id="providerDialog"', 'id="providerSelect"', 'id="providerApiKey"', 'id="testConnect"',
-    'id="providerSettings"', 'id="loadModels"', 'id="providerModels"', 'History stays in this browser'
+    'id="providerSettings"', 'id="loadModels"', 'id="providerModels"',
+    'id="regenerateAnswer"', 'id="toggleRawAnswer"', 'id="requestIdAction"', 'id="answerText" class="markdown-output"',
+    'History stays in this browser'
   ]) {
     assert.ok(html.includes(selector), selector);
   }
-  for (const asset of ['/script.js', '/style.css', '/config.js']) {
+  for (const asset of ['/script.js', '/style.css', '/config.js', '/markdown.js']) {
     assert.equal((await fetch(base + asset)).status, 200, asset);
   }
   const script = await (await fetch(base + '/script.js')).text();
@@ -225,7 +246,14 @@ test('static workspace contains advanced controls and serves source assets', asy
   assert.match(script, /sessionStorage\.setItem\(PROVIDER_SESSION_KEY/);
   assert.doesNotMatch(script, /localStorage\.setItem\(PROVIDER_SESSION_KEY/);
   assert.doesNotMatch(script, /fetch\(apiUrl\('\/api\/history/);
+  assert.match(script, /window\.NodeAIMarkdown\.renderMarkdown/);
+  assert.match(script, /currentlyRaw/);
+  assert.match(script, /function updateRequestId/);
+  assert.match(script, /requestIdAction\.addEventListener/);
   const styles = await (await fetch(base + '/style.css')).text();
+  assert.match(styles, /\.markdown-output h1/);
+  assert.match(styles, /\.markdown-output\.is-raw/);
+  assert.match(styles, /\.request-id-action/);
   assert.match(styles, /\.provider-dialog/);
   assert.match(styles, /\.provider-connect-button/);
 });
@@ -396,7 +424,56 @@ test('invalid BYOK provider and model identifiers are rejected before provider c
   assert.equal(calls, 0);
 });
 
+
+test('Markdown renderer formats headings, inline emphasis, lists, quotes, tables, and code blocks', () => {
+  const answer = [
+    '# API review',
+    'Use **validation** and *clear naming* with `request.body`.',
+    '',
+    '- First check',
+    '- Second check',
+    '',
+    '> Keep errors predictable.',
+    '',
+    '```js',
+    'const ok = true;',
+    '```',
+    '',
+    '| Status | Meaning |',
+    '| --- | --- |',
+    '| 200 | Success |'
+  ].join('\n');
+  const html = renderMarkdown(answer);
+  assert.match(html, /<h1>API review<\/h1>/);
+  assert.match(html, /<strong>validation<\/strong>/);
+  assert.match(html, /<em>clear naming<\/em>/);
+  assert.match(html, /<code>request.body<\/code>/);
+  assert.match(html, /<ul>[\s\S]*<li>First check<\/li>[\s\S]*<li>Second check<\/li>[\s\S]*<\/ul>/);
+  assert.match(html, /<blockquote>[\s\S]*Keep errors predictable[\s\S]*<\/blockquote>/);
+  assert.match(html, /data-copy-code/);
+  assert.match(html, /<span class="token-keyword">const<\/span>/);
+  assert.match(html, /<span class="token-keyword">true<\/span>/);
+  assert.match(html, /<thead>/);
+  assert.match(html, /<td>200<\/td>/);
+});
+
+test('Markdown renderer escapes HTML and refuses executable links', () => {
+  const html = renderMarkdown('<img src=x onerror=alert(1)>\n\n[run](javascript:alert(1))\n\n```html\n<script>alert(1)</script>\n```');
+  assert.match(html, /&lt;img src=x onerror=alert\(1\)&gt;/);
+  assert.doesNotMatch(html, /<img\b/i);
+  assert.doesNotMatch(html, /href=["']javascript:/i);
+  assert.match(html, /\[run\]\(javascript:alert\(1\)\)/);
+  assert.match(html, /&lt;script&gt;alert\(<span class="token-number">1<\/span>\)&lt;\/script&gt;/);
+});
+
+test('Markdown renderer only makes HTTP(S) and mailto links clickable', () => {
+  const html = renderMarkdown('[docs](https://example.com/guide?a=1&b=2) and [email](mailto:help@example.com).');
+  assert.match(html, /href="https:\/\/example\.com\/guide\?a=1&amp;b=2"/);
+  assert.match(html, /href="mailto:help@example\.com"/);
+  assert.match(html, /rel="noopener noreferrer"/);
+});
+
 test('dependency lockfile uses patched proxy-addr release', () => {
   assert.equal(packageLock.packages['node_modules/proxy-addr'].version, '2.0.8');
-  assert.equal(packageLock.packages[''].version, '2.3.0');
+  assert.equal(packageLock.packages[''].version, '2.4.0');
 });
