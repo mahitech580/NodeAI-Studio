@@ -146,6 +146,24 @@ test('stream endpoint does not send canned text when no live provider is configu
   assert.equal((await (await fetch(base + '/api/history')).json()).total, 0);
 });
 
+test('provider authorization errors are actionable without exposing raw provider details', async (t) => {
+  const secret = 'provider-internal-error-secret';
+  const fakeAI = { chat: { completions: { create: async () => {
+    const error = new Error('401 invalid key: ' + secret);
+    error.status = 401;
+    throw error;
+  } } } };
+  const base = await makeServer(t, { aiClient: fakeAI });
+  const response = await jsonPost(base + '/api/ai', { mode: 'chat', prompt: 'Explain APIs' });
+  const body = await response.json();
+  assert.equal(response.status, 401);
+  assert.equal(body.success, false);
+  assert.match(body.error, /provider rejected this API key/i);
+  assert.equal(body.requestId, response.headers.get('x-request-id'));
+  assert.equal(JSON.stringify(body).includes(secret), false);
+  assert.equal(JSON.stringify(body).includes('invalid key'), false);
+});
+
 test('live stream forwards validated context and tone settings to provider', async (t) => {
   const captured = [];
   const fakeAI = {
