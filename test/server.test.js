@@ -4,7 +4,7 @@ const packageLock = require('../package-lock.json');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { createApp, MAX_PROMPT_LENGTH, getSystemPrompt } = require('../server');
-const { renderMarkdown } = require('../public/markdown');
+const { renderMarkdown, calculateAnswerStats } = require('../public/markdown');
 
 async function makeServer(t, options = {}) {
   const app = createApp({
@@ -432,6 +432,18 @@ test('invalid BYOK provider and model identifiers are rejected before provider c
   assert.equal(calls, 0);
 });
 
+
+
+test('response statistics count words, characters, lines, and fenced code blocks', () => {
+  assert.deepEqual(calculateAnswerStats('alpha beta\nline3'), {
+    words: 3, characters: 16, lines: 2, codeBlocks: 0
+  });
+  assert.equal(calculateAnswerStats('```js\nconst x = 1;\n```').codeBlocks, 1);
+  assert.equal(calculateAnswerStats('```js\nconst x = 1;\n```').lines, 3);
+  assert.deepEqual(calculateAnswerStats(''), {
+    words: 0, characters: 0, lines: 0, codeBlocks: 0
+  });
+});
 
 test('Markdown renderer formats headings, inline emphasis, lists, quotes, tables, and code blocks', () => {
   const answer = [
