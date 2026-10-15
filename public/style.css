@@ -808,3 +808,7 @@ html[data-theme="light"] .markdown-code-block { background: #161a29; }
 .response-actions .small-action:disabled { opacity: .45; cursor: not-allowed; }
 .response-actions #regenerateAnswer:not(:disabled) { color: var(--workflow-accent, var(--violet)); border-color: color-mix(in srgb, var(--workflow-accent, var(--violet)) 24%, transparent); }
 .response-actions #regenerateAnswer:not(:disabled):hover { background: color-mix(in srgb, var(--workflow-accent, var(--violet)) 9%, transparent); }
+
+
+.markdown-output.is-raw { white-space: pre-wrap; overflow-wrap: anywhere; font: 11px/1.85 var(--mono); }
+.markdown-output.is-raw a { overflow-wrap: anywhere; }
