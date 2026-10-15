@@ -408,6 +408,8 @@ test('static workspace contains advanced controls and serves source assets', asy
   assert.match(script, /showToast\('Imported ' \+ acceptedImports\.length/);
   assert.match(script, /function exportBrowserSavedPrompts/);
   assert.match(script, /function importBrowserSavedPrompts/);
+  assert.match(script, /Math\.min\(parsed\.entries\.length, Math\.max\(0, LOCAL_HISTORY_LIMIT - historyCache\.length\)\)/);
+  assert.match(script, /Math\.min\(parsed\.prompts\.length, Math\.max\(0, window\.NodeAIDataTools\.MAX_SAVED_PROMPTS - savedPrompts\.length\)\)/);
   const dataTools = await (await fetch(base + '/session-data.js')).text();
   assert.match(dataTools, /parseHistoryArchive/);
   assert.match(dataTools, /parseSavedPromptArchive/);
