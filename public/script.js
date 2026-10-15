@@ -40,7 +40,7 @@ const elements = {
   stopGeneration: $('#stopGeneration'), contextIndicator: $('#contextIndicator'), generateLabel: $('#generateLabel'),
   clearPrompt: $('#clearPrompt'), promptFile: $('#promptFile'), newSession: $('#newSession'),
   emptyResponse: $('#emptyResponse'), responseResult: $('#responseResult'), answerText: $('#answerText'),
-  resultType: $('#resultType'), resultTime: $('#resultTime'), resultModel: $('#resultModel'),
+  resultType: $('#resultType'), resultTime: $('#resultTime'), resultModel: $('#resultModel'), answerStats: $('#answerStats'),
   requestIdAction: $('#requestIdAction'),
   responseFootnote: $('#responseFootnote'), copyAnswer: $('#copyAnswer'), copyAnswerBottom: $('#copyAnswerBottom'),
   exportAnswer: $('#exportAnswer'), status: $('#status'), statusText: $('#statusText'),
@@ -454,6 +454,19 @@ function updateRequestId(requestId) {
   elements.requestIdAction.title = id ? 'Copy full request ID: ' + id : 'Request IDs are shown after a response starts';
 }
 
+function updateAnswerStats(answer) {
+  const value = String(answer || '');
+  const trimmed = value.trim();
+  const words = trimmed ? trimmed.split(/\\s+/).length : 0;
+  const lines = value ? value.split(/\\r\\n|\\r|\\n/).length : 0;
+  const fences = (value.match(/^\\s*```/gm) || []).length;
+  const codeBlocks = Math.floor(fences / 2);
+  elements.answerStats.textContent = value
+    ? words.toLocaleString() + ' words · ' + value.length.toLocaleString() + ' chars · ' +
+      lines.toLocaleString() + ' lines · ' + codeBlocks.toLocaleString() + ' code blocks'
+    : 'No output yet';
+}
+
 function updatePromptCount() {
   const length = elements.prompt.value.length;
   const max = serverConfig.maxPromptLength || 12000;
@@ -518,6 +531,7 @@ function showEmptyResponse() {
   elements.emptyResponse.hidden = false;
   elements.responseResult.hidden = true;
   elements.answerText.textContent = '';
+  updateAnswerStats('');
   elements.answerText.classList.remove('streaming-text');
   elements.answerText.classList.remove('is-raw');
   elements.answerText.dataset.view = 'rendered';
@@ -545,6 +559,7 @@ function showResponse(answer, metadata = {}) {
   elements.emptyResponse.hidden = true;
   elements.responseResult.hidden = false;
   elements.answerText.textContent = currentAnswer;
+  updateAnswerStats(currentAnswer);
   elements.resultType.className = 'result-type ' + (metadata.demoMode ? 'demo-result' : 'live-result');
   elements.resultType.replaceChildren();
   const dot = document.createElement('span');
@@ -951,6 +966,7 @@ async function generateResponse() {
         receivedAnyText = true;
         currentAnswer += data.text;
         elements.answerText.textContent = currentAnswer;
+        updateAnswerStats(currentAnswer);
         elements.answerText.scrollTop = elements.answerText.scrollHeight;
         elements.copyAnswer.disabled = !currentAnswer;
         elements.copyAnswerBottom.disabled = !currentAnswer;
