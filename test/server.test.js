@@ -442,7 +442,7 @@ test('Markdown renderer escapes HTML and refuses executable links', () => {
   assert.doesNotMatch(html, /<img\b/i);
   assert.doesNotMatch(html, /href=["']javascript:/i);
   assert.match(html, /\[run\]\(javascript:alert\(1\)\)/);
-  assert.match(html, /&lt;script&gt;alert\(1\)&lt;\/script&gt;/);
+  assert.match(html, /&lt;script&gt;alert\(<span class="token-number">1<\/span>\)&lt;\/script&gt;/);
 });
 
 test('Markdown renderer only makes HTTP(S) and mailto links clickable', () => {
