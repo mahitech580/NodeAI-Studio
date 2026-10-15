@@ -1206,8 +1206,15 @@ function clearHistory() {
     return;
   }
   if (!window.confirm('Clear the sessions saved in this browser? This cannot be undone.')) return;
+  const previousHistory = historyCache;
   historyCache = [];
-  safelyWriteStorage(HISTORY_STORAGE_KEY, '[]');
+  if (!safelyWriteStorage(HISTORY_STORAGE_KEY, '[]')) {
+    historyCache = previousHistory;
+    updateSessionMetrics();
+    renderHistory();
+    showToast('History could not be cleared from browser storage.', 'error');
+    return;
+  }
   updateSessionMetrics();
   renderHistory();
   showToast('Browser history cleared');
