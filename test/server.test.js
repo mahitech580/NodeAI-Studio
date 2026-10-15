@@ -400,6 +400,9 @@ test('static workspace contains advanced controls and serves source assets', asy
   assert.match(script, /calculateAnswerStats/);
   assert.match(script, /function exportBrowserHistory/);
   assert.match(script, /function importBrowserHistory/);
+  assert.match(script, /LOCAL_HISTORY_LIMIT - historyCache\.length/);
+  assert.match(script, /const candidate = \[\.\.\.historyCache, \.\.\.acceptedImports, item\]/);
+  assert.match(script, /showToast\('Imported ' \+ acceptedImports\.length/);
   assert.match(script, /function exportBrowserSavedPrompts/);
   assert.match(script, /function importBrowserSavedPrompts/);
   const dataTools = await (await fetch(base + '/session-data.js')).text();
