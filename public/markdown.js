@@ -176,5 +176,23 @@
     };
   }
 
-  return { renderMarkdown, calculateAnswerStats };
+  function calculateInferenceMetrics(answer, elapsedMs, firstTokenMs = null) {
+    const value = String(answer || '').trim();
+    const approximateTokens = value ? Math.ceil(value.length / 4) : 0;
+    const elapsed = Number(elapsedMs);
+    const firstToken = firstTokenMs === null ? null : Number(firstTokenMs);
+    const validElapsed = Number.isFinite(elapsed) && elapsed > 0 ? elapsed : null;
+    const validFirstToken = firstToken !== null && Number.isFinite(firstToken) && firstToken >= 0
+      ? firstToken : null;
+    return {
+      approximateTokens,
+      tokensPerSecond: validElapsed && approximateTokens
+        ? Number((approximateTokens / (validElapsed / 1000)).toFixed(1))
+        : null,
+      firstTokenMs: validFirstToken,
+      elapsedMs: validElapsed
+    };
+  }
+
+  return { renderMarkdown, calculateAnswerStats, calculateInferenceMetrics };
 });
