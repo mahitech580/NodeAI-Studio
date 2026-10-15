@@ -231,7 +231,7 @@ test('static workspace contains advanced controls and serves source assets', asy
     'id="toneSelect"', 'id="stopGeneration"', 'id="commandDialog"', 'id="savedPrompts"',
     'id="providerDialog"', 'id="providerSelect"', 'id="providerApiKey"', 'id="testConnect"',
     'id="providerSettings"', 'id="loadModels"', 'id="providerModels"',
-    'id="regenerateAnswer"', 'id="toggleRawAnswer"', 'id="answerText" class="markdown-output"',
+    'id="regenerateAnswer"', 'id="toggleRawAnswer"', 'id="requestIdAction"', 'id="answerText" class="markdown-output"',
     'History stays in this browser'
   ]) {
     assert.ok(html.includes(selector), selector);
@@ -248,9 +248,12 @@ test('static workspace contains advanced controls and serves source assets', asy
   assert.doesNotMatch(script, /fetch\(apiUrl\('\/api\/history/);
   assert.match(script, /window\.NodeAIMarkdown\.renderMarkdown/);
   assert.match(script, /currentlyRaw/);
+  assert.match(script, /function updateRequestId/);
+  assert.match(script, /requestIdAction\.addEventListener/);
   const styles = await (await fetch(base + '/style.css')).text();
   assert.match(styles, /\.markdown-output h1/);
   assert.match(styles, /\.markdown-output\.is-raw/);
+  assert.match(styles, /\.request-id-action/);
   assert.match(styles, /\.provider-dialog/);
   assert.match(styles, /\.provider-connect-button/);
 });
