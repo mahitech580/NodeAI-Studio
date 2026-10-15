@@ -393,7 +393,7 @@ function createApp(options = {}) {
 
   app.post('/api/ai/stream', aiRateLimit, async (req, res, next) => {
     const startedAt = Date.now();
-    const requestId = crypto.randomUUID();
+    const requestId = req.requestId || crypto.randomUUID();
     const validated = validateRequest(req.body);
     if (validated.error) {
       return res.status(validated.error.status).json({ success: false, error: validated.error.message, requestId });
