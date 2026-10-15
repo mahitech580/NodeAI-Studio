@@ -47,6 +47,19 @@ test('health endpoint reports service state without exposing credentials', async
   assert.equal(response.headers.get('cache-control'), 'no-store');
 });
 
+test('health endpoint distinguishes a configured server provider from browser-key mode', async (t) => {
+  const aiClient = { chat: { completions: { create: async () => ({ choices: [{ message: { content: 'ok' } }] }) } } };
+  const base = await makeServer(t, { aiClient });
+  const response = await fetch(base + '/api/health');
+  const body = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(body.demoMode, false);
+  assert.equal(body.providerRequired, false);
+  assert.equal(body.generationMode, 'server-provider');
+  assert.equal(body.provider, 'openai');
+  assert.equal(body.model, 'gpt-4o-mini');
+});
+
 test('public config describes modes, tones, stream support, and compatible providers', async (t) => {
   const base = await makeServer(t);
   const body = await (await fetch(base + '/api/config')).json();
