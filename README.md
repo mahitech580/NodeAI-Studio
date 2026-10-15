@@ -8,6 +8,7 @@ A responsive developer workspace for AI-assisted engineering questions, code gen
 
 - **Four workflows:** Chat, Code Generator, AI Debugger, and SQL Assistant each use a dedicated system prompt and real provider-backed completion.
 - **Independent workflow frontends:** each section has its own header, accent theme, starter prompts, empty state, and structured controls. Code captures language/framework/deliverable/test preference; Debug captures runtime, issue category, expected and observed behavior; SQL captures dialect, schema, and query priority.
+- **Build checks:** `npm run check` validates the server, provider configuration, Markdown renderer, backup utilities, and browser UI scripts before tests.
 - **Live streaming:** the browser receives provider-generated token deltas over server-sent events; the stop button cancels in-flight requests. The server does not stream canned fallback text.
 - **Response styles:** Balanced, Concise, and Deep dive styles tune prompt guidance and output-token budgets.
 - **Multi-turn context:** chat sends a bounded set of recent user/assistant messages; system-role messages from clients are rejected.
