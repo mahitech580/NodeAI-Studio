@@ -679,16 +679,21 @@ function saveCurrentPrompt() {
     showToast('This prompt is already saved', 'warning');
     return;
   }
-  savedPrompts.unshift({
+  const saved = {
     id: (window.crypto && typeof window.crypto.randomUUID === 'function')
       ? window.crypto.randomUUID()
       : String(Date.now()) + '-' + Math.random().toString(36).slice(2, 8),
     mode: currentMode,
     prompt,
     savedAt: new Date().toISOString()
-  });
-  savedPrompts = savedPrompts.slice(0, 100);
-  persistSavedPrompts();
+  };
+  const previousPrompts = savedPrompts;
+  savedPrompts = [saved, ...savedPrompts].slice(0, 100);
+  if (!persistSavedPrompts()) {
+    savedPrompts = previousPrompts;
+    renderSavedPrompts();
+    return;
+  }
   renderSavedPrompts();
   $('.saved-prompt-section').open = true;
   showToast('Prompt saved in this browser');
