@@ -827,3 +827,11 @@ html[data-theme="light"] .markdown-code-block { background: #161a29; }
 .request-id-action { padding: 4px 6px; color: var(--subtle); background: var(--panel); border: 1px solid var(--line); border-radius: 6px; font: 8px var(--mono); cursor: pointer; }
 .request-id-action:not(:disabled):hover { color: var(--cyan); border-color: color-mix(in srgb, var(--cyan) 45%, var(--line)); }
 .request-id-action:disabled { opacity: .55; cursor: default; }
+
+
+/* Compact live metrics for the streamed response. */
+.answer-stats { min-width: 0; color: var(--subtle); font: 8px/1.5 var(--mono); text-align: center; overflow-wrap: anywhere; }
+@media (max-width: 700px) {
+  .result-footer { flex-wrap: wrap; padding: 7px 0; }
+  .answer-stats { flex: 1 1 100%; order: 3; text-align: left; padding-bottom: 4px; }
+}
