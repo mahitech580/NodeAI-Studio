@@ -1,6 +1,6 @@
 # NodeAI Studio
 
-A responsive developer workspace for AI-assisted engineering questions, code generation, debugging, and SQL. Version 2.4.1 adds live response statistics for words, characters, lines, and code blocks, alongside secure Markdown rendering for live answers, copyable syntax-highlighted code blocks, raw/rendered output switching, response regeneration, provider-backed model discovery, and tested browser-supplied credentials. When no provider is connected, generation returns an explicit setup error instead of fabricated sample output.
+A responsive developer workspace for AI-assisted engineering questions, code generation, debugging, and SQL. Version 2.5.0 adds portable, validated JSON backups for session history and saved prompts, alongside live response statistics, secure Markdown rendering, copyable code blocks, raw/rendered output switching, response regeneration, provider-backed model discovery, and tested browser-supplied credentials. When no provider is connected, generation returns an explicit setup error instead of fabricated sample output.
 
 **Stack:** Node.js 22+, Express 5, OpenAI-compatible SDK clients, vanilla HTML/CSS/JavaScript, Node's native test runner.
 
@@ -14,6 +14,7 @@ A responsive developer workspace for AI-assisted engineering questions, code gen
 - **Source-file context:** attach approved text/source files up to 64 KB. The contents are inserted in your prompt; binary files are not uploaded.
 - **Reusable prompts:** save up to 100 templates in browser-local storage and reload/remove them by workflow.
 - **Session history:** the latest 50 sessions are stored in this browser only; search, restore, or clear them. The shared backend does not persist prompts or responses.
+- **Portable backups:** export/import browser session history and reusable prompts as versioned JSON archives. Imports validate structure, clamp fields and counts, ignore duplicates, and enforce 2 MB file/1.8 MB history-storage limits. Backups can contain the prompts and full answers you chose to save, so treat exported files as sensitive.
 - **Live response statistics:** count words, characters, lines, and fenced code blocks while model output streams into the response pane.
 - **Rich output:** render headings, lists, quotations, tables, safe links, and inline formatting; switch between rendered output and raw Markdown; copy individual code blocks; and use lightweight syntax highlighting without extra runtime dependencies.
 - **Iteration:** regenerate a response for the active prompt, restore a session with formatted output, copy answers, or save a Markdown report containing the prompt and response.
