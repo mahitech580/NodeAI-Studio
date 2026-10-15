@@ -44,6 +44,9 @@ const elements = {
   requestIdAction: $('#requestIdAction'),
   responseFootnote: $('#responseFootnote'), copyAnswer: $('#copyAnswer'), copyAnswerBottom: $('#copyAnswerBottom'),
   exportAnswer: $('#exportAnswer'), status: $('#status'), statusText: $('#statusText'),
+  exportHistory: $('#exportHistory'), importHistory: $('#importHistory'), historyImportFile: $('#historyImportFile'),
+  exportSavedPrompts: $('#exportSavedPrompts'), importSavedPrompts: $('#importSavedPrompts'),
+  savedPromptImportFile: $('#savedPromptImportFile'),
   themeToggle: $('#themeToggle'), themeIcon: $('#themeIcon'), history: $('#history'),
   historyCount: $('#historyCount'), historySearch: $('#historySearch'), clearHistory: $('#clearHistory'),
   sessionMetric: $('#sessionMetric'), latencyMetric: $('#latencyMetric'), latencyCaption: $('#latencyCaption'),
@@ -1203,6 +1206,133 @@ function clearHistory() {
   showToast('Browser history cleared');
 }
 
+
+function downloadJsonFile(filename, value) {
+  const blob = new Blob([JSON.stringify(value, null, 2) + '\n'], { type: 'application/json;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  link.hidden = true;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function backupTimestamp() {
+  return new Date().toISOString().replace(/[:.]/g, '-');
+}
+
+function exportBrowserHistory() {
+  if (!historyCache.length) {
+    showToast('There are no sessions to export yet', 'warning');
+    return;
+  }
+  const archive = window.NodeAIDataTools.createHistoryArchive(historyCache);
+  downloadJsonFile('nodeai-history-' + backupTimestamp() + '.json', archive);
+  showToast('Exported ' + archive.entries.length + ' browser sessions');
+}
+
+function exportBrowserSavedPrompts() {
+  if (!savedPrompts.length) {
+    showToast('Save a prompt before exporting the prompt library', 'warning');
+    return;
+  }
+  const archive = window.NodeAIDataTools.createSavedPromptArchive(savedPrompts);
+  downloadJsonFile('nodeai-saved-prompts-' + backupTimestamp() + '.json', archive);
+  showToast('Exported ' + archive.prompts.length + ' saved prompts');
+}
+
+async function readBackupFile(file) {
+  if (!file) return '';
+  if (file.size > window.NodeAIDataTools.MAX_ARCHIVE_BYTES) {
+    throw new Error('This backup is too large. The maximum supported file size is 2 MB.');
+  }
+  return file.text();
+}
+
+function uniqueHistoryKey(item) {
+  return item.id || [item.mode, item.prompt, item.answer].join('\u001f');
+}
+
+async function importBrowserHistory(file) {
+  try {
+    const parsed = window.NodeAIDataTools.parseHistoryArchive(await readBackupFile(file));
+    const existingKeys = new Set(historyCache.map(uniqueHistoryKey));
+    const imported = [];
+    let duplicates = 0;
+    for (const item of parsed.entries) {
+      const key = uniqueHistoryKey(item);
+      const semanticKey = [item.mode, item.prompt, item.answer].join('\u001f');
+      if (existingKeys.has(key) || existingKeys.has(semanticKey)) {
+        duplicates++;
+        continue;
+      }
+      existingKeys.add(key);
+      existingKeys.add(semanticKey);
+      imported.push(item);
+    }
+
+    const merged = [...imported, ...historyCache]
+      .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+    const bounded = [];
+    for (const item of merged) {
+      if (bounded.length >= LOCAL_HISTORY_LIMIT) break;
+      bounded.push(item);
+      const estimate = new TextEncoder().encode(JSON.stringify(bounded)).length;
+      if (estimate > 1800 * 1024) {
+        bounded.pop();
+        break;
+      }
+    }
+    if (imported.length && bounded.length === historyCache.length && bounded.every((item, i) => item.id === historyCache[i]?.id)) {
+      throw new Error('The imported sessions exceed this browser’s available backup storage.');
+    }
+    historyCache = bounded;
+    safelyWriteStorage(HISTORY_STORAGE_KEY, JSON.stringify(historyCache));
+    updateSessionMetrics();
+    renderHistory();
+    showToast('Imported ' + imported.length + ' sessions · ' + duplicates + ' duplicates ignored' +
+      (parsed.skipped ? ' · ' + parsed.skipped + ' invalid entries skipped' : ''));
+  } catch (error) {
+    showToast(error.message || 'Could not import that session backup', 'error');
+  } finally {
+    elements.historyImportFile.value = '';
+  }
+}
+
+async function importBrowserSavedPrompts(file) {
+  try {
+    const parsed = window.NodeAIDataTools.parseSavedPromptArchive(await readBackupFile(file));
+    const existingKeys = new Set(savedPrompts.map((item) => item.id));
+    const semanticKeys = new Set(savedPrompts.map((item) => item.mode + '\u001f' + item.prompt));
+    let imported = 0;
+    let duplicates = 0;
+    for (const item of parsed.prompts) {
+      const semanticKey = item.mode + '\u001f' + item.prompt;
+      if (existingKeys.has(item.id) || semanticKeys.has(semanticKey)) {
+        duplicates++;
+        continue;
+      }
+      existingKeys.add(item.id);
+      semanticKeys.add(semanticKey);
+      savedPrompts.push(item);
+      imported++;
+      if (savedPrompts.length >= 100) break;
+    }
+    savedPrompts = savedPrompts.slice(0, 100);
+    persistSavedPrompts();
+    renderSavedPrompts();
+    showToast('Imported ' + imported + ' prompts · ' + duplicates + ' duplicates ignored' +
+      (parsed.skipped ? ' · ' + parsed.skipped + ' invalid entries skipped' : ''));
+  } catch (error) {
+    showToast(error.message || 'Could not import that prompt backup', 'error');
+  } finally {
+    elements.savedPromptImportFile.value = '';
+  }
+}
+
 function openCommandPalette() {
   if (!elements.commandDialog.open) elements.commandDialog.showModal();
   elements.commandSearch.value = '';
@@ -1284,6 +1414,12 @@ elements.copyAnswer.addEventListener('click', () => copyText(currentAnswer));
 elements.copyAnswerBottom.addEventListener('click', () => copyText(currentAnswer));
 elements.exportAnswer.addEventListener('click', exportAnswer);
 elements.clearHistory.addEventListener('click', clearHistory);
+elements.exportHistory.addEventListener('click', exportBrowserHistory);
+elements.importHistory.addEventListener('click', () => elements.historyImportFile.click());
+elements.historyImportFile.addEventListener('change', () => importBrowserHistory(elements.historyImportFile.files?.[0]));
+elements.exportSavedPrompts.addEventListener('click', exportBrowserSavedPrompts);
+elements.importSavedPrompts.addEventListener('click', () => elements.savedPromptImportFile.click());
+elements.savedPromptImportFile.addEventListener('change', () => importBrowserSavedPrompts(elements.savedPromptImportFile.files?.[0]));
 elements.historySearch.addEventListener('input', renderHistory);
 elements.themeToggle.addEventListener('click', () => setTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'));
 elements.closeCommand.addEventListener('click', closeCommandPalette);
