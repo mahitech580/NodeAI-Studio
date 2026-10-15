@@ -259,12 +259,13 @@ test('static workspace contains advanced controls and serves source assets', asy
     'id="toneSelect"', 'id="stopGeneration"', 'id="commandDialog"', 'id="savedPrompts"',
     'id="providerDialog"', 'id="providerSelect"', 'id="providerApiKey"', 'id="testConnect"',
     'id="providerSettings"', 'id="loadModels"', 'id="providerModels"',
+    'id="exportHistory"', 'id="importHistory"', 'id="exportSavedPrompts"', 'id="importSavedPrompts"',
     'id="regenerateAnswer"', 'id="toggleRawAnswer"', 'id="requestIdAction"', 'id="answerStats"',
     'id="answerText" class="markdown-output"', 'History stays in this browser'
   ]) {
     assert.ok(html.includes(selector), selector);
   }
-  for (const asset of ['/script.js', '/style.css', '/config.js', '/markdown.js']) {
+  for (const asset of ['/script.js', '/style.css', '/config.js', '/markdown.js', '/session-data.js']) {
     assert.equal((await fetch(base + asset)).status, 200, asset);
   }
   const script = await (await fetch(base + '/script.js')).text();
@@ -280,6 +281,14 @@ test('static workspace contains advanced controls and serves source assets', asy
   assert.match(script, /requestIdAction\.addEventListener/);
   assert.match(script, /function updateAnswerStats/);
   assert.match(script, /calculateAnswerStats/);
+  assert.match(script, /function exportBrowserHistory/);
+  assert.match(script, /function importBrowserHistory/);
+  assert.match(script, /function exportBrowserSavedPrompts/);
+  assert.match(script, /function importBrowserSavedPrompts/);
+  const dataTools = await (await fetch(base + '/session-data.js')).text();
+  assert.match(dataTools, /parseHistoryArchive/);
+  assert.match(dataTools, /parseSavedPromptArchive/);
+  assert.match(dataTools, /MAX_ARCHIVE_BYTES/);
   const styles = await (await fetch(base + '/style.css')).text();
   assert.match(styles, /\.markdown-output h1/);
   assert.match(styles, /\.markdown-output\.is-raw/);
