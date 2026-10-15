@@ -212,7 +212,9 @@ test('static workspace contains advanced controls and serves source assets', asy
   for (const selector of [
     'id="toneSelect"', 'id="stopGeneration"', 'id="commandDialog"', 'id="savedPrompts"',
     'id="providerDialog"', 'id="providerSelect"', 'id="providerApiKey"', 'id="testConnect"',
-    'id="providerSettings"', 'id="loadModels"', 'id="providerModels"', 'History stays in this browser'
+    'id="providerSettings"', 'id="loadModels"', 'id="providerModels"',
+    'id="regenerateAnswer"', 'id="toggleRawAnswer"', 'id="answerText" class="markdown-output"',
+    'History stays in this browser'
   ]) {
     assert.ok(html.includes(selector), selector);
   }
@@ -226,7 +228,11 @@ test('static workspace contains advanced controls and serves source assets', asy
   assert.match(script, /sessionStorage\.setItem\(PROVIDER_SESSION_KEY/);
   assert.doesNotMatch(script, /localStorage\.setItem\(PROVIDER_SESSION_KEY/);
   assert.doesNotMatch(script, /fetch\(apiUrl\('\/api\/history/);
+  assert.match(script, /window\.NodeAIMarkdown\.renderMarkdown/);
+  assert.match(script, /currentlyRaw/);
   const styles = await (await fetch(base + '/style.css')).text();
+  assert.match(styles, /\.markdown-output h1/);
+  assert.match(styles, /\.markdown-output\.is-raw/);
   assert.match(styles, /\.provider-dialog/);
   assert.match(styles, /\.provider-connect-button/);
 });
