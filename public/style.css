@@ -812,3 +812,11 @@ html[data-theme="light"] .markdown-code-block { background: #161a29; }
 
 .markdown-output.is-raw { white-space: pre-wrap; overflow-wrap: anywhere; font: 11px/1.85 var(--mono); }
 .markdown-output.is-raw a { overflow-wrap: anywhere; }
+
+
+/* Dependency-free syntax tokens emitted by the safe Markdown renderer. */
+.markdown-code-block .token-keyword { color: #c4a7ff; font-weight: 600; }
+.markdown-code-block .token-string { color: #97e6bb; }
+.markdown-code-block .token-comment { color: #858ca8; font-style: italic; }
+.markdown-code-block .token-number { color: #f3b7e1; }
+.markdown-code-block .token-keyword + .token-keyword { margin-left: 0; }
