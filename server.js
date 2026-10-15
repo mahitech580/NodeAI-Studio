@@ -163,6 +163,8 @@ function createApp(options = {}) {
   const serverProvider = process.env.AI_PROVIDER || 'openai';
   const model = process.env.AI_MODEL || (PROVIDERS[serverProvider] || PROVIDERS.openai).defaultModel;
   const providerClientFactory = options.providerClientFactory || ((provider, apiKey) => createProviderClient(provider, apiKey));
+  const heartbeatIntervalMs = Number.isFinite(options.heartbeatIntervalMs) && options.heartbeatIntervalMs > 0
+    ? options.heartbeatIntervalMs : 15000;
   const app = express();
 
   const allowedOrigins = Array.isArray(options.allowedOrigins)
@@ -404,13 +406,20 @@ function createApp(options = {}) {
     if (!aiRequest.client) return missingProviderResponse(res, requestId);
     const controller = new AbortController();
     let clientDisconnected = false;
+    let heartbeatTimer = null;
+    const clearHeartbeat = () => {
+      if (heartbeatTimer) clearInterval(heartbeatTimer);
+      heartbeatTimer = null;
+    };
 
     res.on('close', () => {
+      clearHeartbeat();
       if (!res.writableEnded) {
         clientDisconnected = true;
         controller.abort();
       }
     });
+    res.on('finish', clearHeartbeat);
 
     function event(name, data) {
       if (res.writableEnded || clientDisconnected) return;
@@ -426,6 +435,14 @@ function createApp(options = {}) {
         'X-Accel-Buffering': 'no'
       });
       res.flushHeaders?.();
+      heartbeatTimer = setInterval(() => {
+        if (res.writableEnded || clientDisconnected) {
+          clearHeartbeat();
+          return;
+        }
+        res.write(': nodeai-heartbeat\\n\\n');
+      }, heartbeatIntervalMs);
+      heartbeatTimer.unref?.();
       event('meta', { requestId, demoMode: false, provider: aiRequest.provider, model: aiRequest.model });
 
       let answer = '';
