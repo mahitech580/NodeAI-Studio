@@ -440,7 +440,7 @@ function createApp(options = {}) {
           clearHeartbeat();
           return;
         }
-        res.write(': nodeai-heartbeat\\n\\n');
+        res.write(': nodeai-heartbeat\n\n');
       }, heartbeatIntervalMs);
       heartbeatTimer.unref?.();
       event('meta', { requestId, demoMode: false, provider: aiRequest.provider, model: aiRequest.model });
