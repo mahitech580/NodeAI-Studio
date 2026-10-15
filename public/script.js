@@ -135,8 +135,10 @@ function safelyReadStorage(key, fallback) {
 function safelyWriteStorage(key, value) {
   try {
     localStorage.setItem(key, value);
+    return true;
   } catch {
     showToast('Browser storage is unavailable; this change may not persist.', 'warning');
+    return false;
   }
 }
 
@@ -612,7 +614,7 @@ function updateSessionMetrics() {
 }
 
 function persistSavedPrompts() {
-  safelyWriteStorage('nodeai-saved-prompts', JSON.stringify(savedPrompts));
+  return safelyWriteStorage('nodeai-saved-prompts', JSON.stringify(savedPrompts));
 }
 
 function renderSavedPrompts() {
@@ -1257,45 +1259,59 @@ function uniqueHistoryKey(item) {
 }
 
 async function importBrowserHistory(file) {
+  if (!file) return;
+  const previousHistory = historyCache;
   try {
     const parsed = window.NodeAIDataTools.parseHistoryArchive(await readBackupFile(file));
-    const existingKeys = new Set(historyCache.map(uniqueHistoryKey));
+    const existingIds = new Set(historyCache.map((item) => item.id));
+    const semanticKey = (item) => [item.mode, item.prompt, item.answer].join('\u001f');
+    const existingSemantic = new Set(historyCache.map(semanticKey));
     const imported = [];
     let duplicates = 0;
     for (const item of parsed.entries) {
       const key = uniqueHistoryKey(item);
-      const semanticKey = [item.mode, item.prompt, item.answer].join('\u001f');
-      if (existingKeys.has(key) || existingKeys.has(semanticKey)) {
+      const semantic = semanticKey(item);
+      if (existingIds.has(key) || existingSemantic.has(semantic)) {
         duplicates++;
         continue;
       }
-      existingKeys.add(key);
-      existingKeys.add(semanticKey);
+      existingIds.add(key);
+      existingSemantic.add(semantic);
       imported.push(item);
     }
 
     const merged = [...imported, ...historyCache]
       .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
     const bounded = [];
+    let storageSkipped = 0;
     for (const item of merged) {
-      if (bounded.length >= LOCAL_HISTORY_LIMIT) break;
-      bounded.push(item);
-      const estimate = new TextEncoder().encode(JSON.stringify(bounded)).length;
-      if (estimate > 1800 * 1024) {
-        bounded.pop();
-        break;
+      if (bounded.length >= LOCAL_HISTORY_LIMIT) {
+        storageSkipped++;
+        continue;
       }
-    }
-    if (imported.length && bounded.length === historyCache.length && bounded.every((item, i) => item.id === historyCache[i]?.id)) {
-      throw new Error('The imported sessions exceed this browser’s available backup storage.');
+      const candidate = [...bounded, item];
+      if (new TextEncoder().encode(JSON.stringify(candidate)).length > 1800 * 1024) {
+        storageSkipped++;
+        continue;
+      }
+      bounded.push(item);
     }
     historyCache = bounded;
-    safelyWriteStorage(HISTORY_STORAGE_KEY, JSON.stringify(historyCache));
+    if (!safelyWriteStorage(HISTORY_STORAGE_KEY, JSON.stringify(historyCache))) {
+      historyCache = previousHistory;
+      updateSessionMetrics();
+      renderHistory();
+      throw new Error('The browser refused to store this import. Existing history has been kept unchanged.');
+    }
     updateSessionMetrics();
     renderHistory();
     showToast('Imported ' + imported.length + ' sessions · ' + duplicates + ' duplicates ignored' +
-      (parsed.skipped ? ' · ' + parsed.skipped + ' invalid entries skipped' : ''));
+      (parsed.skipped ? ' · ' + parsed.skipped + ' invalid skipped' : '') +
+      (storageSkipped ? ' · ' + storageSkipped + ' storage/limit skipped' : ''));
   } catch (error) {
+    historyCache = previousHistory;
+    updateSessionMetrics();
+    renderHistory();
     showToast(error.message || 'Could not import that session backup', 'error');
   } finally {
     elements.historyImportFile.value = '';
@@ -1303,30 +1319,44 @@ async function importBrowserHistory(file) {
 }
 
 async function importBrowserSavedPrompts(file) {
+  if (!file) return;
+  const previousPrompts = savedPrompts;
   try {
     const parsed = window.NodeAIDataTools.parseSavedPromptArchive(await readBackupFile(file));
     const existingKeys = new Set(savedPrompts.map((item) => item.id));
     const semanticKeys = new Set(savedPrompts.map((item) => item.mode + '\u001f' + item.prompt));
     let imported = 0;
     let duplicates = 0;
+    let limitSkipped = 0;
+    const nextPrompts = [...savedPrompts];
     for (const item of parsed.prompts) {
-      const semanticKey = item.mode + '\u001f' + item.prompt;
-      if (existingKeys.has(item.id) || semanticKeys.has(semanticKey)) {
+      const semantic = item.mode + '\u001f' + item.prompt;
+      if (existingKeys.has(item.id) || semanticKeys.has(semantic)) {
         duplicates++;
         continue;
       }
+      if (nextPrompts.length >= 100) {
+        limitSkipped++;
+        continue;
+      }
       existingKeys.add(item.id);
-      semanticKeys.add(semanticKey);
-      savedPrompts.push(item);
+      semanticKeys.add(semantic);
+      nextPrompts.push(item);
       imported++;
-      if (savedPrompts.length >= 100) break;
     }
-    savedPrompts = savedPrompts.slice(0, 100);
-    persistSavedPrompts();
+    savedPrompts = nextPrompts;
+    if (!persistSavedPrompts()) {
+      savedPrompts = previousPrompts;
+      renderSavedPrompts();
+      throw new Error('The browser refused to store these prompts. Your existing library has been kept unchanged.');
+    }
     renderSavedPrompts();
     showToast('Imported ' + imported + ' prompts · ' + duplicates + ' duplicates ignored' +
-      (parsed.skipped ? ' · ' + parsed.skipped + ' invalid entries skipped' : ''));
+      (parsed.skipped ? ' · ' + parsed.skipped + ' invalid skipped' : '') +
+      (limitSkipped ? ' · ' + limitSkipped + ' over limit skipped' : ''));
   } catch (error) {
+    savedPrompts = previousPrompts;
+    renderSavedPrompts();
     showToast(error.message || 'Could not import that prompt backup', 'error');
   } finally {
     elements.savedPromptImportFile.value = '';
