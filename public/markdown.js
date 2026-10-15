@@ -10,6 +10,31 @@
       '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
     })[character]);
   }
+
+  
+  function highlightCode(value, language) {
+    const source = String(value);
+    const normalizedLanguage = String(language || '').toLowerCase();
+    const supportedLanguage = /^(js|jsx|javascript|ts|tsx|typescript|py|python|json|sql|java|go|css|html|sh|bash|)$/i.test(normalizedLanguage);
+    if (!supportedLanguage) return escapeHtml(source);
+
+    const tokenPattern = /("(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\x60(?:\\.|[^\x60\\])*\x60|\/\/[^\n]*|#[^\n]*|\/\*[\s\S]*?\*\/|\b\d+(?:\.\d+)?\b|\b(?:const|let|var|function|return|if|else|for|while|try|catch|throw|new|class|extends|async|await|import|from|export|default|def|elif|in|None|True|False|true|false|null|undefined|SELECT|FROM|WHERE|JOIN|LEFT|RIGHT|INNER|OUTER|ON|AS|GROUP|ORDER|BY|HAVING|LIMIT|INSERT|INTO|VALUES|UPDATE|SET|DELETE|CREATE|TABLE|PRIMARY|KEY|NOT|NULL|AND|OR|IS|DISTINCT|WITH|CASE|WHEN|THEN|END)\b)/gi;
+    let result = '';
+    let lastIndex = 0;
+    for (const match of source.matchAll(tokenPattern)) {
+      const token = match[0];
+      const index = match.index;
+      result += escapeHtml(source.slice(lastIndex, index));
+      let className;
+      if (/^(?:'|")/.test(token) || token.startsWith(String.fromCharCode(96))) className = 'token-string';
+      else if (/^(?:\/\/|#|\/\*)/.test(token)) className = 'token-comment';
+      else if (/^\d/.test(token)) className = 'token-number';
+      else className = 'token-keyword';
+      result += '<span class="' + className + '">' + escapeHtml(token) + '</span>';
+      lastIndex = index + token.length;
+    }
+    return result + escapeHtml(source.slice(lastIndex));
+  }
   
   function renderInlineMarkdown(value) {
     let text = escapeHtml(value);
@@ -62,7 +87,7 @@
     };
     const closeFencedCode = () => {
       const language = escapeHtml(codeLanguage);
-      const code = escapeHtml(codeLines.join('\n'));
+      const code = highlightCode(codeLines.join('\n'), codeLanguage);
       output.push('<div class="markdown-code-block"><div class="markdown-code-toolbar"><span>' + (language || 'CODE') + '</span><button type="button" data-copy-code>Copy code</button></div><pre><code>' + code + '</code></pre></div>');
       codeLines = [];
       codeLanguage = '';
