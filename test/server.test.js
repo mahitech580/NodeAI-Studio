@@ -306,7 +306,11 @@ test('rate limiting returns retry guidance even when no provider is configured',
   const limited = await jsonPost(base + '/api/ai', { mode: 'chat', prompt: 'second' });
   assert.equal(limited.status, 429);
   assert.match(limited.headers.get('retry-after') || '', /^\d+$/);
-  assert.match((await limited.json()).error, /too many requests/i);
+  assert.equal(limited.headers.get('cache-control'), 'no-store');
+  const error = await limited.json();
+  assert.match(error.error, /too many requests/i);
+  assert.equal(error.requestId, limited.headers.get('x-request-id'));
+  assert.equal(error.retryAfterSeconds, Number(limited.headers.get('retry-after')));
 });
 
 
