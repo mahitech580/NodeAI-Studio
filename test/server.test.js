@@ -298,6 +298,27 @@ test('configured origins have CORS access while disconnected generation fails ho
   }
 });
 
+test('CORS preflight permits browser BYOK headers without wildcard origins', async (t) => {
+  const origin = 'https://mahitech580.github.io';
+  const base = await makeServer(t, { allowedOrigins: [origin] });
+  const response = await fetch(base + '/api/ai/stream', {
+    method: 'OPTIONS',
+    headers: {
+      Origin: origin,
+      'Access-Control-Request-Method': 'POST',
+      'Access-Control-Request-Headers': 'content-type,x-nodeai-api-key,x-nodeai-provider,x-nodeai-model'
+    }
+  });
+  assert.equal(response.status, 204);
+  assert.equal(response.headers.get('access-control-allow-origin'), origin);
+  assert.match(response.headers.get('access-control-allow-methods') || '', /POST/i);
+  const allowedHeaders = (response.headers.get('access-control-allow-headers') || '').toLowerCase();
+  for (const header of ['x-nodeai-api-key', 'x-nodeai-provider', 'x-nodeai-model']) {
+    assert.ok(allowedHeaders.includes(header), 'preflight should allow ' + header);
+  }
+  assert.doesNotMatch(response.headers.get('access-control-allow-origin') || '', /^\*$/);
+});
+
 test('disallowed CORS origin is rejected explicitly', async (t) => {
   const base = await makeServer(t, { allowedOrigins: ['https://mahitech580.github.io'] });
   const response = await fetch(base + '/api/health', {
