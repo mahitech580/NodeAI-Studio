@@ -108,6 +108,30 @@ test('generation refuses to disguise a missing provider as a live or canned answ
   assert.equal(history.storage, 'browser-only');
 });
 
+test('non-stream endpoint returns real provider output and correlation metadata', async (t) => {
+  const calls = [];
+  const fakeAI = { chat: { completions: { create: async (request, options) => {
+    calls.push({ request, options });
+    return { choices: [{ message: { content: 'A real test-client answer.' } }] };
+  } } } };
+  const base = await makeServer(t, { aiClient: fakeAI });
+  const response = await jsonPost(base + '/api/ai', {
+    mode: 'code', tone: 'concise', prompt: 'Build a health endpoint'
+  });
+  const body = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(body.success, true);
+  assert.equal(body.answer, 'A real test-client answer.');
+  assert.equal(body.demoMode, false);
+  assert.equal(body.provider, 'openai');
+  assert.equal(body.model, 'gpt-4o-mini');
+  assert.equal(body.requestId, response.headers.get('x-request-id'));
+  assert.equal(calls[0].request.stream, undefined);
+  assert.equal(calls[0].request.max_tokens, 1200);
+  assert.equal(calls[0].options.signal instanceof AbortSignal, true);
+  assert.equal(JSON.stringify(body).includes('apiKey'), false);
+});
+
 test('stream endpoint does not send canned text when no live provider is configured', async (t) => {
   const base = await makeServer(t);
   const response = await jsonPost(base + '/api/ai/stream', {
