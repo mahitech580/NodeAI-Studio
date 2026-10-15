@@ -9,10 +9,11 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=2.4.1">
-  <script src="config.js?v=2.4.1"></script>
-  <script src="markdown.js?v=2.4.1"></script>
-  <script src="script.js?v=2.4.1" defer></script>
+  <link rel="stylesheet" href="style.css?v=2.5.0">
+  <script src="config.js?v=2.5.0"></script>
+  <script src="markdown.js?v=2.5.0"></script>
+  <script src="session-data.js?v=2.5.0"></script>
+  <script src="script.js?v=2.5.0" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to workspace</a>
@@ -37,14 +38,22 @@
         <label class="history-search"><span aria-hidden="true">⌕</span><input id="historySearch" type="search" placeholder="Find a session…" autocomplete="off" aria-label="Search recent sessions"><kbd>/</kbd></label>
         <div id="history" class="history-list" aria-live="polite"><div class="history-empty"><span class="history-empty-mark">◌</span><span>Your sessions will appear here.</span></div></div>
         <button id="clearHistory" class="clear-history" type="button">Clear browser history</button>
+        <div class="data-tools-row" aria-label="Session backup tools">
+          <button id="exportHistory" class="data-tool-button" type="button" title="Download your browser session history as JSON">↧ Export</button>
+          <button id="importHistory" class="data-tool-button" type="button" title="Import a NodeAI session backup">↥ Import</button>
+        </div>
       </section>
       <details class="saved-prompt-section">
         <summary><span>Saved prompts</span><span id="savedPromptCount" class="count-pill">0</span></summary>
-        <div id="savedPrompts" class="saved-prompt-list"><div class="saved-prompts-empty">Save a useful prompt to reuse it later.</div></div>
+        <div class="saved-prompt-tools" aria-label="Saved prompt backup tools">
+            <button id="exportSavedPrompts" class="data-tool-button" type="button">↧ Export prompts</button>
+            <button id="importSavedPrompts" class="data-tool-button" type="button">↥ Import prompts</button>
+          </div>
+          <div id="savedPrompts" class="saved-prompt-list"><div class="saved-prompts-empty">Save a useful prompt to reuse it later.</div></div>
       </details>
       <div class="sidebar-bottom">
         <div class="privacy-note"><span class="privacy-dot"></span><span>History stays in this browser</span></div>
-        <div class="sidebar-footer"><span class="footer-mark">N.</span><span>Built for the next idea.</span><span class="version">v2.4.1</span></div>
+        <div class="sidebar-footer"><span class="footer-mark">N.</span><span>Built for the next idea.</span><span class="version">v2.5.0</span></div>
       </div>
     </aside>
 
@@ -180,6 +189,8 @@
       </div>
     </main>
   </div>
+  <input id="historyImportFile" type="file" accept=".json,application/json" hidden>
+  <input id="savedPromptImportFile" type="file" accept=".json,application/json" hidden>
   <dialog id="commandDialog" class="command-dialog" aria-labelledby="commandTitle">
     <div class="command-head"><span class="brand-mark small-mark">N<span>.</span></span><div><h2 id="commandTitle">Quick actions</h2><p>Jump to a workflow or start fresh.</p></div><button id="closeCommand" class="icon-button" type="button" aria-label="Close quick actions">×</button></div>
     <label class="command-search"><span aria-hidden="true">⌕</span><input id="commandSearch" type="search" placeholder="Search actions…" autocomplete="off"></label>
@@ -189,6 +200,10 @@
       <button type="button" data-command="code"><span>⌘</span><span><strong>Code Generator</strong><small>Build a solution from an idea</small></span><kbd>2</kbd></button>
       <button type="button" data-command="debug"><span>⌁</span><span><strong>AI Debugger</strong><small>Investigate an error</small></span><kbd>3</kbd></button>
       <button type="button" data-command="sql"><span>▤</span><span><strong>SQL Assistant</strong><small>Draft and understand queries</small></span><kbd>4</kbd></button>
+      <button type="button" data-command="export-history"><span>↧</span><span><strong>Export sessions</strong><small>Download browser history as JSON</small></span><kbd>E</kbd></button>
+      <button type="button" data-command="import-history"><span>↥</span><span><strong>Import sessions</strong><small>Restore a NodeAI history backup</small></span><kbd>I</kbd></button>
+      <button type="button" data-command="export-prompts"><span>☆</span><span><strong>Export prompt library</strong><small>Back up reusable prompt templates</small></span><kbd>P</kbd></button>
+      <button type="button" data-command="import-prompts"><span>＋</span><span><strong>Import prompt library</strong><small>Merge templates from a backup</small></span><kbd>⇧P</kbd></button>
       <button type="button" data-command="theme"><span>☼</span><span><strong>Toggle appearance</strong><small>Switch dark or light theme</small></span><kbd>T</kbd></button>
     </div>
     <div class="command-foot"><span>Choose an action</span><span><kbd>ESC</kbd> to close</span></div>
