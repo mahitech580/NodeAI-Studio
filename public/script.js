@@ -24,6 +24,8 @@ function apiUrl(path) {
 }
 
 const elements = {
+  appShell: $('.app-shell'), navToggle: $('#navToggle'), sidebarScrim: $('#sidebarScrim'),
+  setupGuide: $('#setupGuide'), setupConnect: $('#setupConnect'),
   modeButtons: $$('.mode-button'), prompt: $('#prompt'), charCount: $('#charCount'),
   heroEyebrowText: $('#heroEyebrowText'), heroTitleLead: $('#heroTitleLead'), heroTitleAccent: $('#heroTitleAccent'),
   heroDescription: $('#heroDescription'), composerTitle: $('#composerTitle'), composerSubtitle: $('#composerSubtitle'),
@@ -225,6 +227,38 @@ function providerHeaders() {
   };
 }
 
+function syncNavigationLayout() {
+  const desktop = window.matchMedia('(min-width: 921px)').matches;
+  if (!desktop) {
+    elements.appShell.classList.remove('sidebar-collapsed');
+    elements.navToggle.setAttribute('aria-expanded', 'true');
+    elements.navToggle.setAttribute('aria-label', 'Navigation is available in the sidebar');
+    elements.navToggle.hidden = true;
+    return;
+  }
+  elements.navToggle.hidden = false;
+  const collapsed = safelyReadStorage('nodeai-sidebar-collapsed', 'false') === 'true';
+  elements.appShell.classList.toggle('sidebar-collapsed', collapsed);
+  elements.navToggle.setAttribute('aria-expanded', String(!collapsed));
+  elements.navToggle.setAttribute('aria-label', collapsed ? 'Expand navigation' : 'Collapse navigation');
+  elements.navToggle.title = collapsed ? 'Expand the full sidebar' : 'Collapse sidebar for more workspace room';
+  elements.modeButtons.forEach((button) => {
+    const label = button.querySelector('span:nth-child(2)')?.textContent.trim() || 'Workflow';
+    button.title = label;
+    button.setAttribute('aria-label', label);
+  });
+}
+
+function toggleNavigationLayout() {
+  if (!window.matchMedia('(min-width: 921px)').matches) return;
+  const collapsed = !elements.appShell.classList.contains('sidebar-collapsed');
+  elements.appShell.classList.toggle('sidebar-collapsed', collapsed);
+  if (!safelyWriteStorage('nodeai-sidebar-collapsed', String(collapsed))) {
+    elements.appShell.classList.toggle('sidebar-collapsed', !collapsed);
+  }
+  syncNavigationLayout();
+}
+
 function updateProviderButton() {
   const connected = Boolean(providerState.apiKey);
   elements.providerConnectLabel.textContent = connected
@@ -235,6 +269,7 @@ function updateProviderButton() {
   elements.providerSettings.title = connected
     ? 'Connected to ' + providerInfo().label + ' (' + providerState.model + ')'
     : serverAIConfigured ? 'Use the server-configured AI model or connect your own provider' : 'Connect a live AI provider';
+  if (elements.setupGuide) elements.setupGuide.hidden = connected || serverAIConfigured;
 }
 
 function setProviderFeedback(message, type = '') {
@@ -1465,6 +1500,9 @@ function runCommand(command) {
   }
 }
 
+elements.navToggle.addEventListener('click', toggleNavigationLayout);
+window.addEventListener('resize', syncNavigationLayout, { passive: true });
+elements.setupConnect.addEventListener('click', openProviderDialog);
 elements.modeButtons.forEach((button) => button.addEventListener('click', () => updateMode(button.dataset.mode)));
 elements.prompt.addEventListener('input', updatePromptCount);
 elements.toneSelect.addEventListener('change', () => safelyWriteStorage('nodeai-tone', elements.toneSelect.value));
@@ -1582,6 +1620,7 @@ document.addEventListener('keydown', (event) => {
 });
 
 setTheme(safelyReadStorage('nodeai-theme', 'dark'));
+syncNavigationLayout();
 elements.toneSelect.value = ['balanced', 'concise', 'deep'].includes(safelyReadStorage('nodeai-tone', 'balanced'))
   ? safelyReadStorage('nodeai-tone', 'balanced') : 'balanced';
 updateMode('chat');
