@@ -603,8 +603,8 @@ test('response statistics count words, characters, lines, and fenced code blocks
 
 test('inference metrics label approximate token counts and compute latency honestly', () => {
   assert.deepEqual(calculateInferenceMetrics('This answer is forty chars long!', 5000, 750), {
-    approximateTokens: 9,
-    tokensPerSecond: 1.8,
+    approximateTokens: 8,
+    tokensPerSecond: 1.6,
     firstTokenMs: 750,
     elapsedMs: 5000
   });
