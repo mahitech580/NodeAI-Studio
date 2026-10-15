@@ -389,7 +389,7 @@ test('static workspace contains advanced controls and serves source assets', asy
     'id="toneSelect"', 'id="stopGeneration"', 'id="commandDialog"', 'id="savedPrompts"',
     'id="providerDialog"', 'id="providerSelect"', 'id="providerApiKey"', 'id="testConnect"',
     'id="navToggle"', 'id="sidebarScrim"', 'id="workspaceSidebar"', 'id="setupGuide"', 'id="setupConnect"',
-    'id="providerSettings"', 'id="loadModels"', 'id="providerModels"',
+    'data-command="toggle-nav"', 'id="providerSettings"', 'id="loadModels"', 'id="providerModels"',
     'id="exportHistory"', 'id="importHistory"', 'id="exportSavedPrompts"', 'id="importSavedPrompts"',
     'id="regenerateAnswer"', 'id="toggleRawAnswer"', 'id="requestIdAction"', 'id="answerStats"',
     'id="answerText" class="markdown-output"', 'History stays in this browser'
@@ -411,6 +411,8 @@ test('static workspace contains advanced controls and serves source assets', asy
   assert.match(script, /function updateRequestId/);
   assert.match(script, /function syncNavigationLayout/);
   assert.match(script, /function toggleNavigationLayout/);
+  assert.match(script, /command === 'toggle-nav'/);
+  assert.match(script, /event.key.toLowerCase\(\) === 'b'/);
   assert.match(script, /elements\.setupGuide\.hidden = connected \|\| serverAIConfigured/);
   const styles = await (await fetch(base + '/style.css')).text();
   assert.match(styles, /\.setup-guide/);
