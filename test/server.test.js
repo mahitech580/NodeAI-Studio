@@ -414,10 +414,10 @@ test('static workspace contains advanced controls and serves source assets', asy
   assert.match(script, /command === 'toggle-nav'/);
   assert.match(script, /event.key.toLowerCase\(\) === 'b'/);
   assert.match(script, /elements\.setupGuide\.hidden = connected \|\| serverAIConfigured/);
-  const styles = await (await fetch(base + '/style.css')).text();
-  assert.match(styles, /\.setup-guide/);
-  assert.match(styles, /\.app-shell\.sidebar-collapsed/);
-  assert.match(styles, /\.nav-toggle/);
+  const shellStyles = await (await fetch(base + '/style.css')).text();
+  assert.match(shellStyles, /\.setup-guide/);
+  assert.match(shellStyles, /\.app-shell\.sidebar-collapsed/);
+  assert.match(shellStyles, /\.nav-toggle/);
   assert.match(script, /requestIdAction\.addEventListener/);
   assert.match(script, /function updateAnswerStats\(answer, inference = null\)/);
   assert.match(script, /calculateAnswerStats/);
