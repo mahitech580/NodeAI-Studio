@@ -488,6 +488,10 @@ function makeChip(label, prompt, mode) {
 }
 
 function updateMode(mode) {
+  if (busy && mode !== currentMode) {
+    showToast('Stop the current generation before switching workflows.', 'warning');
+    return;
+  }
   if (!Object.hasOwn(MODE_CONFIG, mode)) mode = 'chat';
   currentMode = mode;
   const config = MODE_CONFIG[mode];
@@ -1509,6 +1513,10 @@ elements.commandDialog.addEventListener('click', (event) => {
 document.addEventListener('click', (event) => {
   const starter = event.target.closest('[data-prompt][data-mode]');
   if (!starter) return;
+  if (busy) {
+    showToast('Stop the current generation before switching workflows.', 'warning');
+    return;
+  }
   updateMode(starter.dataset.mode);
   elements.prompt.value = starter.dataset.prompt || '';
   updatePromptCount();
