@@ -88,6 +88,7 @@ GitHub Actions installs the lockfile, checks JavaScript syntax, and runs the API
     ├── public/
     │   ├── config.js
     │   ├── index.html
+    │   ├── markdown.js
     │   ├── script.js
     │   └── style.css
     ├── test/server.test.js
