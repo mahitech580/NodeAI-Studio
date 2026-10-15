@@ -800,3 +800,11 @@ html[data-theme="light"] .markdown-code-block { background: #161a29; }
 @media (prefers-reduced-motion: reduce) {
   #answerText.streaming-text::after { animation: none; }
 }
+
+
+/* Response toolbar productivity controls */
+.response-actions { flex-wrap: wrap; align-items: center; }
+.response-actions .small-action { min-height: 29px; white-space: nowrap; }
+.response-actions .small-action:disabled { opacity: .45; cursor: not-allowed; }
+.response-actions #regenerateAnswer:not(:disabled) { color: var(--workflow-accent, var(--violet)); border-color: color-mix(in srgb, var(--workflow-accent, var(--violet)) 24%, transparent); }
+.response-actions #regenerateAnswer:not(:disabled):hover { background: color-mix(in srgb, var(--workflow-accent, var(--violet)) 9%, transparent); }
