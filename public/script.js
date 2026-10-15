@@ -29,7 +29,8 @@ const elements = {
   heroDescription: $('#heroDescription'), composerTitle: $('#composerTitle'), composerSubtitle: $('#composerSubtitle'),
   promptLabel: $('#promptLabel'), responseTitle: $('#responseTitle'), responseSubtitle: $('#responseSubtitle'),
   emptyTitle: $('#emptyTitle'), emptyDescription: $('#emptyDescription'), emptyTip: $('#emptyTip'),
-  outputTag: $('#outputTag'), modeSettingsCards: $$('[data-settings]'),
+  outputTag: $('#outputTag'), modeSettingsCards: $('[data-settings]'),
+  regenerateAnswer: $('#regenerateAnswer'),
   codeLanguage: $('#codeLanguage'), codeFramework: $('#codeFramework'), codeDeliverable: $('#codeDeliverable'),
   codeIncludeTests: $('#codeIncludeTests'), debugRuntime: $('#debugRuntime'), debugCategory: $('#debugCategory'),
   debugExpected: $('#debugExpected'), debugObserved: $('#debugObserved'),
@@ -877,6 +878,7 @@ async function generateResponse() {
     }
   }, RENDER_COLD_START_HINT_MS);
   elements.generate.disabled = true;
+  elements.regenerateAnswer.disabled = true;
   elements.generate.classList.add('is-loading');
   elements.generateLabel.textContent = 'Thinking…';
   elements.stopGeneration.hidden = false;
@@ -948,6 +950,7 @@ async function generateResponse() {
     elements.answerText.classList.remove('streaming-text');
     elements.responseFootnote.textContent = 'Live response complete · review before using in production';
     elements.exportAnswer.disabled = !currentAnswer;
+    elements.regenerateAnswer.disabled = !currentAnswer;
 
     if (currentMode === 'chat') {
       addConversationTurn('user', rawPrompt);
@@ -1201,6 +1204,7 @@ elements.prompt.addEventListener('input', updatePromptCount);
 elements.toneSelect.addEventListener('change', () => safelyWriteStorage('nodeai-tone', elements.toneSelect.value));
 elements.savePrompt.addEventListener('click', saveCurrentPrompt);
 elements.generate.addEventListener('click', generateResponse);
+elements.regenerateAnswer.addEventListener('click', () => generateResponse());
 elements.stopGeneration.addEventListener('click', () => { if (requestController) requestController.abort(); });
 elements.promptFile.addEventListener('change', () => handlePromptFile(elements.promptFile.files?.[0]));
 elements.clearPrompt.addEventListener('click', () => {
