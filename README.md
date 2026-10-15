@@ -1,6 +1,6 @@
 # NodeAI Studio
 
-A responsive developer workspace for AI-assisted engineering questions, code generation, debugging, and SQL. Version 2.5.0 adds portable, validated JSON backups for session history and saved prompts, first-token latency and estimated output throughput, secure Markdown rendering, copyable code blocks, raw/rendered output switching, response regeneration, provider-backed model discovery, and tested browser-supplied credentials. When no provider is connected, generation returns an explicit setup error instead of fabricated sample output.
+A responsive developer workspace for AI-assisted engineering questions, code generation, debugging, and SQL. Version 2.5.1 adds portable, validated JSON backups for session history and saved prompts, first-token latency and estimated output throughput, secure Markdown rendering, copyable code blocks, raw/rendered output switching, response regeneration, provider-backed model discovery, and tested browser-supplied credentials. When no provider is connected, generation returns an explicit setup error instead of fabricated sample output.
 
 **Stack:** Node.js 22+, Express 5, OpenAI-compatible SDK clients, vanilla HTML/CSS/JavaScript, Node's native test runner.
 
