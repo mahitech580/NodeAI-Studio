@@ -159,6 +159,45 @@ test('live stream forwards validated context and tone settings to provider', asy
 });
 
 
+test('non-stream generation cancels the upstream provider request after browser disconnect', async (t) => {
+  let startedResolve;
+  let abortedResolve;
+  const started = new Promise((resolve) => { startedResolve = resolve; });
+  const providerAborted = new Promise((resolve) => { abortedResolve = resolve; });
+  const fakeAI = {
+    chat: { completions: { create: (_request, options) => {
+      startedResolve();
+      return new Promise((resolve, reject) => {
+        if (options.signal.aborted) {
+          abortedResolve();
+          reject(Object.assign(new Error('cancelled'), { name: 'AbortError' }));
+          return;
+        }
+        options.signal.addEventListener('abort', () => {
+          abortedResolve();
+          reject(Object.assign(new Error('cancelled'), { name: 'AbortError' }));
+        }, { once: true });
+      });
+    } } }
+  };
+  const base = await makeServer(t, { aiClient: fakeAI });
+  const browser = new AbortController();
+  const pending = fetch(base + '/api/ai', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify({ mode: 'chat', prompt: 'This request will be cancelled.' }),
+    signal: browser.signal
+  });
+  await started;
+  browser.abort();
+  await assert.rejects(pending, { name: 'AbortError' });
+  const wasAborted = await Promise.race([
+    providerAborted.then(() => true),
+    new Promise((resolve) => setTimeout(() => resolve(false), 500))
+  ]);
+  assert.equal(wasAborted, true, 'provider signal should be aborted after the client leaves');
+});
+
 test('SSE stream sends keep-alive comments while the first provider token is delayed', async (t) => {
   const fakeAI = {
     chat: { completions: { create: async () => (async function* () {
