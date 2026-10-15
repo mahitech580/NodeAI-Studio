@@ -372,13 +372,22 @@ function createApp(options = {}) {
     const aiRequest = resolveRequestAI(req, ai, model, serverProvider, providerClientFactory);
     if (aiRequest.error) return res.status(400).json({ success: false, error: aiRequest.error, requestId });
     if (!aiRequest.client) return missingProviderResponse(res, requestId);
+    const controller = new AbortController();
+    let clientDisconnected = false;
+    res.on('close', () => {
+      if (!res.writableEnded) {
+        clientDisconnected = true;
+        controller.abort();
+      }
+    });
     try {
       const result = await aiRequest.client.chat.completions.create({
         model: aiRequest.model,
         messages: buildMessages(request),
         temperature: request.tone === 'deep' ? 0.35 : 0.2,
         max_tokens: request.tone === 'concise' ? 1200 : 3000
-      });
+      }, { signal: controller.signal });
+      if (clientDisconnected || controller.signal.aborted) return;
       const answer = result.choices?.[0]?.message?.content;
       if (typeof answer !== 'string' || !answer.trim()) throw new Error('The AI provider returned an empty response.');
       const createdAt = new Date().toISOString();
@@ -386,6 +395,7 @@ function createApp(options = {}) {
       res.set('Cache-Control', 'no-store');
       return res.json({ success: true, requestId, answer: answer.trim(), demoMode: false, provider: aiRequest.provider, model: aiRequest.model, durationMs, createdAt });
     } catch (error) {
+      if (clientDisconnected || controller.signal.aborted || error.name === 'AbortError') return;
       if (error.type === 'entity.too.large') return next(error);
       const status = providerErrorStatus(error);
       console.error('[NodeAI] request ' + requestId + ' failed: provider=' + aiRequest.provider + ' status=' + status);
