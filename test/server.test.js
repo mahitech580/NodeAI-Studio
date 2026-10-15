@@ -4,7 +4,7 @@ const packageLock = require('../package-lock.json');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { createApp, MAX_PROMPT_LENGTH, getSystemPrompt } = require('../server');
-const { renderMarkdown, calculateAnswerStats } = require('../public/markdown');
+const { renderMarkdown, calculateAnswerStats, calculateInferenceMetrics } = require('../public/markdown');
 
 async function makeServer(t, options = {}) {
   const app = createApp({
@@ -599,6 +599,23 @@ test('response statistics count words, characters, lines, and fenced code blocks
   assert.deepEqual(calculateAnswerStats(''), {
     words: 0, characters: 0, lines: 0, codeBlocks: 0
   });
+});
+
+test('inference metrics label approximate token counts and compute latency honestly', () => {
+  assert.deepEqual(calculateInferenceMetrics('This answer is forty chars long!', 5000, 750), {
+    approximateTokens: 9,
+    tokensPerSecond: 1.8,
+    firstTokenMs: 750,
+    elapsedMs: 5000
+  });
+  assert.deepEqual(calculateInferenceMetrics('', 1000, null), {
+    approximateTokens: 0,
+    tokensPerSecond: null,
+    firstTokenMs: null,
+    elapsedMs: 1000
+  });
+  assert.equal(calculateInferenceMetrics('answer', 0, -1).tokensPerSecond, null);
+  assert.equal(calculateInferenceMetrics('answer', 1000, -1).firstTokenMs, null);
 });
 
 test('Markdown renderer formats headings, inline emphasis, lists, quotes, tables, and code blocks', () => {
