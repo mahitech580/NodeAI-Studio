@@ -509,6 +509,11 @@ function showEmptyResponse() {
   elements.responseResult.hidden = true;
   elements.answerText.textContent = '';
   elements.answerText.classList.remove('streaming-text');
+  elements.answerText.classList.remove('is-raw');
+  elements.answerText.dataset.view = 'rendered';
+  elements.regenerateAnswer.disabled = true;
+  elements.toggleRawAnswer.disabled = true;
+  elements.toggleRawAnswer.textContent = 'Raw';
   elements.copyAnswer.disabled = true;
   elements.copyAnswerBottom.disabled = true;
   elements.exportAnswer.disabled = true;
@@ -727,6 +732,11 @@ function restoreSession(item) {
   showResponse(item.answer || '', {
     demoMode: Boolean(item.demoMode), model: item.model, durationMs: item.durationMs, createdAt: item.createdAt
   });
+  elements.answerText.innerHTML = window.NodeAIMarkdown.renderMarkdown(item.answer || '');
+  elements.answerText.dataset.view = 'rendered';
+  elements.toggleRawAnswer.disabled = !item.answer;
+  elements.toggleRawAnswer.textContent = 'Raw';
+  elements.regenerateAnswer.disabled = !item.prompt;
   elements.latencyMetric.textContent = formatDuration(item.durationMs) || '—';
   elements.latencyCaption.textContent = 'Selected from history';
   showToast('Session restored');
