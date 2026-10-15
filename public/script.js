@@ -1254,7 +1254,7 @@ elements.answerText.addEventListener('click', (event) => {
   const button = event.target.closest('[data-copy-code]');
   if (!button) return;
   const code = $('code', button.closest('.markdown-code-block'))?.textContent || '';
-  copyText(code).then(() => showToast('Code block copied')).catch(() => showToast('Could not copy code block', 'error'));
+  copyText(code);
 });
 elements.copyAnswer.addEventListener('click', () => copyText(currentAnswer));
 elements.copyAnswerBottom.addEventListener('click', () => copyText(currentAnswer));
