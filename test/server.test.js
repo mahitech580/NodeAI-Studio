@@ -158,6 +158,26 @@ test('live stream forwards validated context and tone settings to provider', asy
   assert.deepEqual(captured[0].messages.slice(1), [...context, { role: 'user', content: 'Add a health endpoint' }]);
 });
 
+
+test('SSE stream sends keep-alive comments while the first provider token is delayed', async (t) => {
+  const fakeAI = {
+    chat: { completions: { create: async () => (async function* () {
+      await new Promise((resolve) => setTimeout(resolve, 35));
+      yield { choices: [{ delta: { content: 'The model is ready.' } }] };
+    })() } }
+  };
+  const base = await makeServer(t, { aiClient: fakeAI, heartbeatIntervalMs: 5 });
+  const response = await jsonPost(base + '/api/ai/stream', {
+    mode: 'chat', tone: 'balanced', prompt: 'Say hello'
+  });
+  const body = await response.text();
+  assert.equal(response.status, 200);
+  assert.match(body, /: nodeai-heartbeat\n\n/);
+  assert.match(body, /The model is ready\./);
+  assert.match(body, /event: done/);
+  assert.ok((body.match(/: nodeai-heartbeat/g) || []).length >= 1);
+});
+
 test('history compatibility endpoint never exposes prompt data and validates mode', async (t) => {
   const base = await makeServer(t);
   await jsonPost(base + '/api/ai', { mode: 'chat', prompt: 'Sensitive prompt marker' });
