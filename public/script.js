@@ -531,17 +531,17 @@ function escapeHtml(value) {
 function renderInlineMarkdown(value) {
   let text = escapeHtml(value);
   const codeTokens = [];
-  text = text.replace(/`([^`\n]+)`/g, (_match, code) => {
+  text = text.replace(/\x60([^\x60\n]+)\x60/g, (_match, code) => {
     const token = '@@NODEAI_CODE_' + codeTokens.length + '@@';
     codeTokens.push('<code>' + code + '</code>');
     return token;
   });
-  text = text.replace(/[([^]]+)]((https?:\/\/[^\s)]+|mailto:[^\s)]+))/g, (_match, label, href) => {
+  text = text.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+|mailto:[^\s)]+)\)/g, (_match, label, href) => {
     const normalized = href.replace(/&amp;/g, '&');
     if (!/^(https?:\/\/|mailto:)/i.test(normalized)) return label;
-    return '<a href="' + href + '" target="_blank" rel="noopener noreferrer">' + label + '</a>';
+    return '<a href="' + escapeHtml(normalized) + '" target="_blank" rel="noopener noreferrer">' + label + '</a>';
   });
-  text = text.replace(/**([^*\n]+)**/g, '<strong>$1</strong>');
+  text = text.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
   text = text.replace(/~~([^~\n]+)~~/g, '<del>$1</del>');
   text = text.replace(/(^|[^*])\*([^*\n]+)\*(?!\*)/g, '$1<em>$2</em>');
   codeTokens.forEach((code, index) => {
@@ -586,9 +586,12 @@ function renderMarkdown(markdown) {
     inCode = false;
   };
   const headingMatch = (line) => line.match(/^(#{1,6})\s+(.+?)\s*#*$/);
+  const splitCells = (line) => line.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map((cell) => cell.trim());
+  const tableSeparator = /^\s*\|?\s*:?-{3,}:?\s*(?:\|\s*:?-{3,}:?\s*)+\|?\s*$/;
 
-  for (const line of lines) {
-    const fence = line.match(/^\s*```\s*([A-Za-z0-9_+.#-]{0,32}).*$/);
+  for (let index = 0; index < lines.length; index++) {
+    const line = lines[index];
+    const fence = line.match(/^\s*\x60{3}\s*([A-Za-z0-9_+.#-]{0,32}).*$/);
     if (inCode) {
       if (fence) closeFencedCode();
       else codeLines.push(line);
@@ -627,16 +630,18 @@ function renderMarkdown(markdown) {
     }
     closeList();
 
-    if (line.includes('|') && /^\s*\|?\s*:?-{3,}:?\s*(?:\|\s*:?-{3,}:?\s*)+\|?\s*$/.test(lines[lines.indexOf(line) + 1] || '')) {
+    if (line.includes('|') && tableSeparator.test(lines[index + 1] || '')) {
       flushParagraph();
-      const cells = line.trim().replace(/^\|/,'').replace(/\|$/,'').split('|').map(cell => cell.trim());
-      const rows = lines.slice(lines.indexOf(line) + 2);
+      const headers = splitCells(line);
+      index += 2;
       const tableRows = [];
-      while (rows.length && rows[0].includes('|') && rows[0].trim()) {
-        tableRows.push(rows.shift());
+      while (index < lines.length && lines[index].includes('|') && lines[index].trim()) {
+        tableRows.push(splitCells(lines[index]));
+        index++;
       }
-      const header = '<thead><tr>' + cells.map(cell => '<th>' + renderInlineMarkdown(cell) + '</th>').join('') + '</tr></thead>';
-      const body = tableRows.map(row => '<tr>' + row.trim().replace(/^\|/,'').replace(/\|$/,'').split('|').map(cell => '<td>' + renderInlineMarkdown(cell.trim()) + '</td>').join('') + '</tr>').join('');
+      index--;
+      const header = '<thead><tr>' + headers.map((cell) => '<th>' + renderInlineMarkdown(cell) + '</th>').join('') + '</tr></thead>';
+      const body = tableRows.map((row) => '<tr>' + headers.map((_cell, cellIndex) => '<td>' + renderInlineMarkdown(row[cellIndex] || '') + '</td>').join('') + '</tr>').join('');
       output.push('<div class="markdown-table-wrap"><table>' + header + '<tbody>' + body + '</tbody></table></div>');
       continue;
     }
