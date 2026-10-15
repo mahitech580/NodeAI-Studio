@@ -229,6 +229,8 @@ function createApp(options = {}) {
       name: 'NodeAI Studio',
       status: 'ok',
       demoMode: !ai,
+      providerRequired: !ai,
+      generationMode: ai ? 'server-provider' : 'browser-key-required',
       model: ai ? model : null,
       provider: ai ? serverProvider : null,
       uptimeSeconds: Math.floor(process.uptime()),
@@ -560,7 +562,7 @@ if (require.main === module) {
   const app = createApp();
   app.listen(PORT, () => {
     console.log('NodeAI Studio v' + APP_VERSION + ' listening on http://localhost:' + PORT);
-    console.log('AI mode: ' + (process.env.AI_API_KEY ? 'LIVE' : 'DEMO'));
+    console.log('AI mode: ' + (process.env.AI_API_KEY ? 'LIVE SERVER PROVIDER' : 'BROWSER KEY REQUIRED'));
   });
 }
 
