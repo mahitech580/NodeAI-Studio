@@ -39,6 +39,8 @@ test('health endpoint reports service state without exposing credentials', async
   assert.equal(body.success, true);
   assert.equal(body.status, 'ok');
   assert.equal(body.demoMode, true);
+  assert.equal(body.providerRequired, true);
+  assert.equal(body.generationMode, 'browser-key-required');
   assert.equal(body.name, 'NodeAI Studio');
   assert.equal(typeof body.version, 'string');
   assert.equal(Object.hasOwn(body, 'apiKey'), false);
