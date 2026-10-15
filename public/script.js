@@ -457,9 +457,9 @@ function updateRequestId(requestId) {
 function updateAnswerStats(answer) {
   const value = String(answer || '');
   const trimmed = value.trim();
-  const words = trimmed ? trimmed.split(/\\s+/).length : 0;
-  const lines = value ? value.split(/\\r\\n|\\r|\\n/).length : 0;
-  const fences = (value.match(/^\\s*```/gm) || []).length;
+  const words = trimmed ? trimmed.split(/\s+/).length : 0;
+  const lines = value ? value.split(/\r\n|\r|\n/).length : 0;
+  const fences = (value.match(/^\s*```/gm) || []).length;
   const codeBlocks = Math.floor(fences / 2);
   elements.answerStats.textContent = value
     ? words.toLocaleString() + ' words · ' + value.length.toLocaleString() + ' chars · ' +
