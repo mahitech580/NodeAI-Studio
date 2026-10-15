@@ -29,7 +29,7 @@ const elements = {
   heroDescription: $('#heroDescription'), composerTitle: $('#composerTitle'), composerSubtitle: $('#composerSubtitle'),
   promptLabel: $('#promptLabel'), responseTitle: $('#responseTitle'), responseSubtitle: $('#responseSubtitle'),
   emptyTitle: $('#emptyTitle'), emptyDescription: $('#emptyDescription'), emptyTip: $('#emptyTip'),
-  outputTag: $('#outputTag'), modeSettingsCards: $('[data-settings]'),
+  outputTag: $('#outputTag'), modeSettingsCards: $$('[data-settings]'),
   regenerateAnswer: $('#regenerateAnswer'), toggleRawAnswer: $('#toggleRawAnswer'),
   codeLanguage: $('#codeLanguage'), codeFramework: $('#codeFramework'), codeDeliverable: $('#codeDeliverable'),
   codeIncludeTests: $('#codeIncludeTests'), debugRuntime: $('#debugRuntime'), debugCategory: $('#debugCategory'),
