@@ -459,12 +459,27 @@ function updateRequestId(requestId) {
   elements.requestIdAction.title = id ? 'Copy full request ID: ' + id : 'Request IDs are shown after a response starts';
 }
 
-function updateAnswerStats(answer) {
+function updateAnswerStats(answer, inference = null) {
   const stats = window.NodeAIMarkdown.calculateAnswerStats(answer);
-  elements.answerStats.textContent = stats.characters
-    ? stats.words.toLocaleString() + ' words · ' + stats.characters.toLocaleString() + ' chars · ' +
-      stats.lines.toLocaleString() + ' lines · ' + stats.codeBlocks.toLocaleString() + ' code blocks'
-    : 'No output yet';
+  if (!stats.characters) {
+    elements.answerStats.textContent = 'No output yet';
+    return;
+  }
+  const parts = [
+    stats.words.toLocaleString() + ' words',
+    stats.characters.toLocaleString() + ' chars',
+    stats.lines.toLocaleString() + ' lines',
+    stats.codeBlocks.toLocaleString() + ' code blocks'
+  ];
+  if (inference && Number.isFinite(inference.elapsedMs)) {
+    const metrics = window.NodeAIMarkdown.calculateInferenceMetrics(
+      answer, inference.elapsedMs, inference.firstTokenMs
+    );
+    if (metrics.approximateTokens) parts.push('~' + metrics.approximateTokens.toLocaleString() + ' estimated tokens');
+    if (metrics.tokensPerSecond !== null) parts.push('~' + metrics.tokensPerSecond + ' est. tok/s');
+    if (metrics.firstTokenMs !== null) parts.push('first token ' + formatDuration(metrics.firstTokenMs));
+  }
+  elements.answerStats.textContent = parts.join(' · ');
 }
 
 function updatePromptCount() {
@@ -912,6 +927,8 @@ async function generateResponse() {
   busy = true;
   requestController = new AbortController();
   const activeController = requestController;
+  const requestStartedAt = performance.now();
+  let firstTokenLatencyMs = null;
   let timedOut = false;
   const timeout = setTimeout(() => {
     timedOut = true;
@@ -973,6 +990,9 @@ async function generateResponse() {
         elements.resultModel.textContent = data.model ? ((data.provider ? providerInfo(data.provider).shortLabel + ' · ' : '') + data.model) : 'Waiting for model metadata…';
       } else if (eventName === 'delta' && typeof data.text === 'string') {
         receivedAnyText = true;
+        if (firstTokenLatencyMs === null) {
+          firstTokenLatencyMs = Math.max(0, Math.round(performance.now() - requestStartedAt));
+        }
         currentAnswer += data.text;
         elements.answerText.textContent = currentAnswer;
         updateAnswerStats(currentAnswer);
@@ -989,7 +1009,15 @@ async function generateResponse() {
 
     if (streamError) throw new Error(streamError);
     if (!completed) throw new Error('The stream ended before the completion event arrived.');
-    currentResult = streamMeta;
+    currentResult = {
+      ...streamMeta,
+      clientElapsedMs: Math.max(0, performance.now() - requestStartedAt),
+      firstTokenLatencyMs
+    };
+    updateAnswerStats(currentAnswer, {
+      elapsedMs: currentResult.clientElapsedMs,
+      firstTokenMs: firstTokenLatencyMs
+    });
     updateRequestId(streamMeta.requestId);
     elements.answerText.innerHTML = window.NodeAIMarkdown.renderMarkdown(currentAnswer);
     elements.answerText.dataset.view = 'rendered';
