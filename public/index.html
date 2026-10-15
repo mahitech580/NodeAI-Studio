@@ -41,7 +41,6 @@
         <div class="data-tools-row" aria-label="Session backup tools">
           <button id="exportHistory" class="data-tool-button" type="button" title="Download your browser session history as JSON">↧ Export</button>
           <button id="importHistory" class="data-tool-button" type="button" title="Import a NodeAI session backup">↥ Import</button>
-          <input id="historyImportFile" type="file" accept=".json,application/json" hidden>
         </div>
       </section>
       <details class="saved-prompt-section">
@@ -49,7 +48,6 @@
         <div class="saved-prompt-tools" aria-label="Saved prompt backup tools">
             <button id="exportSavedPrompts" class="data-tool-button" type="button">↧ Export prompts</button>
             <button id="importSavedPrompts" class="data-tool-button" type="button">↥ Import prompts</button>
-            <input id="savedPromptImportFile" type="file" accept=".json,application/json" hidden>
           </div>
           <div id="savedPrompts" class="saved-prompt-list"><div class="saved-prompts-empty">Save a useful prompt to reuse it later.</div></div>
       </details>
@@ -191,6 +189,8 @@
       </div>
     </main>
   </div>
+  <input id="historyImportFile" type="file" accept=".json,application/json" hidden>
+  <input id="savedPromptImportFile" type="file" accept=".json,application/json" hidden>
   <dialog id="commandDialog" class="command-dialog" aria-labelledby="commandTitle">
     <div class="command-head"><span class="brand-mark small-mark">N<span>.</span></span><div><h2 id="commandTitle">Quick actions</h2><p>Jump to a workflow or start fresh.</p></div><button id="closeCommand" class="icon-button" type="button" aria-label="Close quick actions">×</button></div>
     <label class="command-search"><span aria-hidden="true">⌕</span><input id="commandSearch" type="search" placeholder="Search actions…" autocomplete="off"></label>
