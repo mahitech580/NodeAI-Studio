@@ -41,6 +41,7 @@ const elements = {
   clearPrompt: $('#clearPrompt'), promptFile: $('#promptFile'), newSession: $('#newSession'),
   emptyResponse: $('#emptyResponse'), responseResult: $('#responseResult'), answerText: $('#answerText'),
   resultType: $('#resultType'), resultTime: $('#resultTime'), resultModel: $('#resultModel'),
+  requestIdAction: $('#requestIdAction'),
   responseFootnote: $('#responseFootnote'), copyAnswer: $('#copyAnswer'), copyAnswerBottom: $('#copyAnswerBottom'),
   exportAnswer: $('#exportAnswer'), status: $('#status'), statusText: $('#statusText'),
   themeToggle: $('#themeToggle'), themeIcon: $('#themeIcon'), history: $('#history'),
@@ -445,6 +446,14 @@ function disconnectProvider() {
   showToast('Browser provider disconnected', 'warning');
 }
 
+function updateRequestId(requestId) {
+  const id = typeof requestId === 'string' ? requestId.trim() : '';
+  elements.requestIdAction.dataset.requestId = id;
+  elements.requestIdAction.disabled = !id;
+  elements.requestIdAction.textContent = id ? 'ID ' + id.slice(0, 8) : 'ID —';
+  elements.requestIdAction.title = id ? 'Copy full request ID: ' + id : 'Request IDs are shown after a response starts';
+}
+
 function updatePromptCount() {
   const length = elements.prompt.value.length;
   const max = serverConfig.maxPromptLength || 12000;
@@ -505,6 +514,7 @@ function updateMode(mode) {
 function showEmptyResponse() {
   currentAnswer = '';
   currentResult = null;
+  updateRequestId('');
   elements.emptyResponse.hidden = false;
   elements.responseResult.hidden = true;
   elements.answerText.textContent = '';
@@ -531,6 +541,7 @@ function showEmptyResponse() {
 function showResponse(answer, metadata = {}) {
   currentAnswer = String(answer || '');
   currentResult = metadata;
+  updateRequestId(metadata.requestId);
   elements.emptyResponse.hidden = true;
   elements.responseResult.hidden = false;
   elements.answerText.textContent = currentAnswer;
@@ -730,7 +741,7 @@ function restoreSession(item) {
   elements.toneSelect.value = ['balanced', 'concise', 'deep'].includes(item.tone) ? item.tone : 'balanced';
   updatePromptCount();
   showResponse(item.answer || '', {
-    demoMode: Boolean(item.demoMode), model: item.model, durationMs: item.durationMs, createdAt: item.createdAt
+    demoMode: Boolean(item.demoMode), model: item.model, durationMs: item.durationMs, createdAt: item.createdAt, requestId: item.id
   });
   elements.answerText.innerHTML = window.NodeAIMarkdown.renderMarkdown(item.answer || '');
   elements.answerText.dataset.view = 'rendered';
@@ -954,6 +965,7 @@ async function generateResponse() {
     if (streamError) throw new Error(streamError);
     if (!completed) throw new Error('The stream ended before the completion event arrived.');
     currentResult = streamMeta;
+    updateRequestId(streamMeta.requestId);
     elements.answerText.innerHTML = window.NodeAIMarkdown.renderMarkdown(currentAnswer);
     elements.answerText.dataset.view = 'rendered';
     elements.toggleRawAnswer.disabled = !currentAnswer;
@@ -1256,6 +1268,7 @@ elements.answerText.addEventListener('click', (event) => {
   const code = $('code', button.closest('.markdown-code-block'))?.textContent || '';
   copyText(code);
 });
+elements.requestIdAction.addEventListener('click', () => copyText(elements.requestIdAction.dataset.requestId || ''));
 elements.copyAnswer.addEventListener('click', () => copyText(currentAnswer));
 elements.copyAnswerBottom.addEventListener('click', () => copyText(currentAnswer));
 elements.exportAnswer.addEventListener('click', exportAnswer);
