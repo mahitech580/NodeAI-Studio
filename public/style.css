@@ -820,3 +820,10 @@ html[data-theme="light"] .markdown-code-block { background: #161a29; }
 .markdown-code-block .token-comment { color: #858ca8; font-style: italic; }
 .markdown-code-block .token-number { color: #f3b7e1; }
 .markdown-code-block .token-keyword + .token-keyword { margin-left: 0; }
+
+
+/* Copyable request correlation ID for production debugging. */
+.result-meta-right { display: inline-flex; align-items: center; justify-content: flex-end; gap: 9px; flex-wrap: wrap; margin-left: auto; }
+.request-id-action { padding: 4px 6px; color: var(--subtle); background: var(--panel); border: 1px solid var(--line); border-radius: 6px; font: 8px var(--mono); cursor: pointer; }
+.request-id-action:not(:disabled):hover { color: var(--cyan); border-color: color-mix(in srgb, var(--cyan) 45%, var(--line)); }
+.request-id-action:disabled { opacity: .55; cursor: default; }
