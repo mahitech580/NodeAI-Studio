@@ -159,6 +159,45 @@ test('live stream forwards validated context and tone settings to provider', asy
 });
 
 
+test('non-stream generation cancels the upstream provider request after browser disconnect', async (t) => {
+  let startedResolve;
+  let abortedResolve;
+  const started = new Promise((resolve) => { startedResolve = resolve; });
+  const providerAborted = new Promise((resolve) => { abortedResolve = resolve; });
+  const fakeAI = {
+    chat: { completions: { create: (_request, options) => {
+      startedResolve();
+      return new Promise((resolve, reject) => {
+        if (options.signal.aborted) {
+          abortedResolve();
+          reject(Object.assign(new Error('cancelled'), { name: 'AbortError' }));
+          return;
+        }
+        options.signal.addEventListener('abort', () => {
+          abortedResolve();
+          reject(Object.assign(new Error('cancelled'), { name: 'AbortError' }));
+        }, { once: true });
+      });
+    } } }
+  };
+  const base = await makeServer(t, { aiClient: fakeAI });
+  const browser = new AbortController();
+  const pending = fetch(base + '/api/ai', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify({ mode: 'chat', prompt: 'This request will be cancelled.' }),
+    signal: browser.signal
+  });
+  await started;
+  browser.abort();
+  await assert.rejects(pending, { name: 'AbortError' });
+  const wasAborted = await Promise.race([
+    providerAborted.then(() => true),
+    new Promise((resolve) => setTimeout(() => resolve(false), 500))
+  ]);
+  assert.equal(wasAborted, true, 'provider signal should be aborted after the client leaves');
+});
+
 test('SSE stream sends keep-alive comments while the first provider token is delayed', async (t) => {
   const fakeAI = {
     chat: { completions: { create: async () => (async function* () {
@@ -259,12 +298,13 @@ test('static workspace contains advanced controls and serves source assets', asy
     'id="toneSelect"', 'id="stopGeneration"', 'id="commandDialog"', 'id="savedPrompts"',
     'id="providerDialog"', 'id="providerSelect"', 'id="providerApiKey"', 'id="testConnect"',
     'id="providerSettings"', 'id="loadModels"', 'id="providerModels"',
+    'id="exportHistory"', 'id="importHistory"', 'id="exportSavedPrompts"', 'id="importSavedPrompts"',
     'id="regenerateAnswer"', 'id="toggleRawAnswer"', 'id="requestIdAction"', 'id="answerStats"',
     'id="answerText" class="markdown-output"', 'History stays in this browser'
   ]) {
     assert.ok(html.includes(selector), selector);
   }
-  for (const asset of ['/script.js', '/style.css', '/config.js', '/markdown.js']) {
+  for (const asset of ['/script.js', '/style.css', '/config.js', '/markdown.js', '/session-data.js']) {
     assert.equal((await fetch(base + asset)).status, 200, asset);
   }
   const script = await (await fetch(base + '/script.js')).text();
@@ -280,6 +320,14 @@ test('static workspace contains advanced controls and serves source assets', asy
   assert.match(script, /requestIdAction\.addEventListener/);
   assert.match(script, /function updateAnswerStats/);
   assert.match(script, /calculateAnswerStats/);
+  assert.match(script, /function exportBrowserHistory/);
+  assert.match(script, /function importBrowserHistory/);
+  assert.match(script, /function exportBrowserSavedPrompts/);
+  assert.match(script, /function importBrowserSavedPrompts/);
+  const dataTools = await (await fetch(base + '/session-data.js')).text();
+  assert.match(dataTools, /parseHistoryArchive/);
+  assert.match(dataTools, /parseSavedPromptArchive/);
+  assert.match(dataTools, /MAX_ARCHIVE_BYTES/);
   const styles = await (await fetch(base + '/style.css')).text();
   assert.match(styles, /\.markdown-output h1/);
   assert.match(styles, /\.markdown-output\.is-raw/);
@@ -297,7 +345,11 @@ test('rate limiting returns retry guidance even when no provider is configured',
   const limited = await jsonPost(base + '/api/ai', { mode: 'chat', prompt: 'second' });
   assert.equal(limited.status, 429);
   assert.match(limited.headers.get('retry-after') || '', /^\d+$/);
-  assert.match((await limited.json()).error, /too many requests/i);
+  assert.equal(limited.headers.get('cache-control'), 'no-store');
+  const error = await limited.json();
+  assert.match(error.error, /too many requests/i);
+  assert.equal(error.requestId, limited.headers.get('x-request-id'));
+  assert.equal(error.retryAfterSeconds, Number(limited.headers.get('retry-after')));
 });
 
 
@@ -518,5 +570,5 @@ test('Markdown renderer only makes HTTP(S) and mailto links clickable', () => {
 
 test('dependency lockfile uses patched proxy-addr release', () => {
   assert.equal(packageLock.packages['node_modules/proxy-addr'].version, '2.0.8');
-  assert.equal(packageLock.packages[''].version, '2.4.1');
+  assert.equal(packageLock.packages[''].version, '2.5.0');
 });
