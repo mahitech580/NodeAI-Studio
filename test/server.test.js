@@ -259,8 +259,8 @@ test('static workspace contains advanced controls and serves source assets', asy
     'id="toneSelect"', 'id="stopGeneration"', 'id="commandDialog"', 'id="savedPrompts"',
     'id="providerDialog"', 'id="providerSelect"', 'id="providerApiKey"', 'id="testConnect"',
     'id="providerSettings"', 'id="loadModels"', 'id="providerModels"',
-    'id="regenerateAnswer"', 'id="toggleRawAnswer"', 'id="requestIdAction"', 'id="answerText" class="markdown-output"',
-    'History stays in this browser'
+    'id="regenerateAnswer"', 'id="toggleRawAnswer"', 'id="requestIdAction"', 'id="answerStats"',
+    'id="answerText" class="markdown-output"', 'History stays in this browser'
   ]) {
     assert.ok(html.includes(selector), selector);
   }
@@ -278,10 +278,13 @@ test('static workspace contains advanced controls and serves source assets', asy
   assert.match(script, /currentlyRaw/);
   assert.match(script, /function updateRequestId/);
   assert.match(script, /requestIdAction\.addEventListener/);
+  assert.match(script, /function updateAnswerStats/);
+  assert.match(script, /calculateAnswerStats/);
   const styles = await (await fetch(base + '/style.css')).text();
   assert.match(styles, /\.markdown-output h1/);
   assert.match(styles, /\.markdown-output\.is-raw/);
   assert.match(styles, /\.request-id-action/);
+  assert.match(styles, /\.answer-stats/);
   assert.match(styles, /\.provider-dialog/);
   assert.match(styles, /\.provider-connect-button/);
 });
