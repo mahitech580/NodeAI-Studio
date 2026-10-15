@@ -354,6 +354,19 @@ test('each workflow has its own frontend controls and payload builder', async (t
   }
 });
 
+test('security headers restrict scripts, frames, and content-type sniffing', async (t) => {
+  const base = await makeServer(t, { allowedOrigins: ['https://mahitech580.github.io'] });
+  const response = await fetch(base + '/');
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get('x-content-type-options'), 'nosniff');
+  assert.equal(response.headers.get('x-frame-options'), 'DENY');
+  const policy = response.headers.get('content-security-policy') || '';
+  assert.match(policy, /default-src 'self'/);
+  assert.match(policy, /script-src 'self'/);
+  assert.match(policy, /frame-ancestors 'none'/);
+  assert.doesNotMatch(policy, /script-src[^;]*unsafe-inline/i);
+});
+
 test('static workspace contains advanced controls and serves source assets', async (t) => {
   const base = await makeServer(t);
   const response = await fetch(base + '/');
