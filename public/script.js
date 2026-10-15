@@ -30,7 +30,7 @@ const elements = {
   promptLabel: $('#promptLabel'), responseTitle: $('#responseTitle'), responseSubtitle: $('#responseSubtitle'),
   emptyTitle: $('#emptyTitle'), emptyDescription: $('#emptyDescription'), emptyTip: $('#emptyTip'),
   outputTag: $('#outputTag'), modeSettingsCards: $('[data-settings]'),
-  regenerateAnswer: $('#regenerateAnswer'),
+  regenerateAnswer: $('#regenerateAnswer'), toggleRawAnswer: $('#toggleRawAnswer'),
   codeLanguage: $('#codeLanguage'), codeFramework: $('#codeFramework'), codeDeliverable: $('#codeDeliverable'),
   codeIncludeTests: $('#codeIncludeTests'), debugRuntime: $('#debugRuntime'), debugCategory: $('#debugCategory'),
   debugExpected: $('#debugExpected'), debugObserved: $('#debugObserved'),
@@ -879,6 +879,9 @@ async function generateResponse() {
   }, RENDER_COLD_START_HINT_MS);
   elements.generate.disabled = true;
   elements.regenerateAnswer.disabled = true;
+  elements.toggleRawAnswer.disabled = true;
+  elements.answerText.dataset.view = 'streaming';
+  elements.answerText.classList.remove('is-raw');
   elements.generate.classList.add('is-loading');
   elements.generateLabel.textContent = 'Thinking…';
   elements.stopGeneration.hidden = false;
@@ -942,6 +945,10 @@ async function generateResponse() {
     if (!completed) throw new Error('The stream ended before the completion event arrived.');
     currentResult = streamMeta;
     elements.answerText.innerHTML = window.NodeAIMarkdown.renderMarkdown(currentAnswer);
+    elements.answerText.dataset.view = 'rendered';
+    elements.toggleRawAnswer.disabled = !currentAnswer;
+    elements.toggleRawAnswer.textContent = 'Raw';
+    elements.toggleRawAnswer.title = 'Show the exact Markdown returned by the model';
     elements.answerText.classList.remove('streaming-text');
     elements.resultType.className = 'result-type ' + (streamMeta.demoMode ? 'demo-result' : 'live-result');
     elements.resultType.textContent = streamMeta.demoMode ? 'DEMO RESPONSE' : 'MODEL RESPONSE';
@@ -1205,6 +1212,23 @@ elements.toneSelect.addEventListener('change', () => safelyWriteStorage('nodeai-
 elements.savePrompt.addEventListener('click', saveCurrentPrompt);
 elements.generate.addEventListener('click', generateResponse);
 elements.regenerateAnswer.addEventListener('click', () => generateResponse());
+elements.toggleRawAnswer.addEventListener('click', () => {
+  if (!currentAnswer) return;
+  const currentlyRaw = elements.answerText.dataset.view === 'raw';
+  if (currentlyRaw) {
+    elements.answerText.innerHTML = window.NodeAIMarkdown.renderMarkdown(currentAnswer);
+    elements.answerText.dataset.view = 'rendered';
+    elements.answerText.classList.remove('is-raw');
+    elements.toggleRawAnswer.textContent = 'Raw';
+    elements.toggleRawAnswer.title = 'Show the exact Markdown returned by the model';
+  } else {
+    elements.answerText.textContent = currentAnswer;
+    elements.answerText.dataset.view = 'raw';
+    elements.answerText.classList.add('is-raw');
+    elements.toggleRawAnswer.textContent = 'Rendered';
+    elements.toggleRawAnswer.title = 'Render Markdown formatting and show copyable code blocks';
+  }
+});
 elements.stopGeneration.addEventListener('click', () => { if (requestController) requestController.abort(); });
 elements.promptFile.addEventListener('change', () => handlePromptFile(elements.promptFile.files?.[0]));
 elements.clearPrompt.addEventListener('click', () => {
