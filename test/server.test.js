@@ -396,8 +396,11 @@ test('static workspace contains advanced controls and serves source assets', asy
   assert.match(script, /currentlyRaw/);
   assert.match(script, /function updateRequestId/);
   assert.match(script, /requestIdAction\.addEventListener/);
-  assert.match(script, /function updateAnswerStats/);
+  assert.match(script, /function updateAnswerStats\(answer, inference = null\)/);
   assert.match(script, /calculateAnswerStats/);
+  assert.match(script, /firstTokenLatencyMs/);
+  assert.match(script, /clientElapsedMs/);
+  assert.match(script, /est\. tok\/s/);
   assert.match(script, /function exportBrowserHistory/);
   assert.match(script, /function importBrowserHistory/);
   assert.match(script, /LOCAL_HISTORY_LIMIT - historyCache\.length/);
