@@ -1280,7 +1280,7 @@ async function importBrowserHistory(file) {
   try {
     const parsed = window.NodeAIDataTools.parseHistoryArchive(await readBackupFile(file));
     const existingIds = new Set(historyCache.map((item) => item.id));
-    const semanticKey = (item) => [item.mode, item.prompt, item.answer].join('\u001f');
+    const semanticKey = (item) => JSON.stringify([item.mode, item.prompt, item.answer]);
     const existingSemantic = new Set(historyCache.map(semanticKey));
     const imported = [];
     let duplicates = 0;
@@ -1340,13 +1340,14 @@ async function importBrowserSavedPrompts(file) {
   try {
     const parsed = window.NodeAIDataTools.parseSavedPromptArchive(await readBackupFile(file));
     const existingKeys = new Set(savedPrompts.map((item) => item.id));
-    const semanticKeys = new Set(savedPrompts.map((item) => item.mode + '\u001f' + item.prompt));
+    const semanticKey = (item) => JSON.stringify([item.mode, item.prompt]);
+    const semanticKeys = new Set(savedPrompts.map(semanticKey));
     let imported = 0;
     let duplicates = 0;
     let limitSkipped = 0;
     const nextPrompts = [...savedPrompts];
     for (const item of parsed.prompts) {
-      const semantic = item.mode + '\u001f' + item.prompt;
+      const semantic = semanticKey(item);
       if (existingKeys.has(item.id) || semanticKeys.has(semantic)) {
         duplicates++;
         continue;
