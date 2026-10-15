@@ -228,6 +228,11 @@ function providerHeaders() {
 }
 
 function syncNavigationLayout() {
+  elements.modeButtons.forEach((button) => {
+    const label = button.querySelector('span:nth-child(2)')?.textContent.trim() || 'Workflow';
+    button.title = label;
+    button.setAttribute('aria-label', label);
+  });
   const desktop = window.matchMedia('(min-width: 921px)').matches;
   if (!desktop) {
     elements.appShell.classList.remove('sidebar-collapsed');
@@ -242,11 +247,6 @@ function syncNavigationLayout() {
   elements.navToggle.setAttribute('aria-expanded', String(!collapsed));
   elements.navToggle.setAttribute('aria-label', collapsed ? 'Expand navigation' : 'Collapse navigation');
   elements.navToggle.title = collapsed ? 'Expand the full sidebar' : 'Collapse sidebar for more workspace room';
-  elements.modeButtons.forEach((button) => {
-    const label = button.querySelector('span:nth-child(2)')?.textContent.trim() || 'Workflow';
-    button.title = label;
-    button.setAttribute('aria-label', label);
-  });
 }
 
 function toggleNavigationLayout() {
