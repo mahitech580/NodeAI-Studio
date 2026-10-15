@@ -1497,6 +1497,10 @@ function runCommand(command) {
   } else if (command === 'import-prompts') {
     closeCommandPalette();
     elements.savedPromptImportFile.click();
+  } else if (command === 'toggle-nav') {
+    closeCommandPalette();
+    if (window.matchMedia('(min-width: 921px)').matches) toggleNavigationLayout();
+    else showToast('Compact navigation is already active at this screen size.', 'warning');
   }
 }
 
@@ -1608,6 +1612,10 @@ document.addEventListener('keydown', (event) => {
     event.preventDefault();
     if (elements.commandDialog.open) closeCommandPalette();
     else openCommandPalette();
+  }
+  if (modifier && event.key.toLowerCase() === 'b' && window.matchMedia('(min-width: 921px)').matches) {
+    event.preventDefault();
+    toggleNavigationLayout();
   }
   if (event.key === '/' && !['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName) && !modifier) {
     event.preventDefault();
