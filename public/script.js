@@ -44,6 +44,9 @@ const elements = {
   requestIdAction: $('#requestIdAction'),
   responseFootnote: $('#responseFootnote'), copyAnswer: $('#copyAnswer'), copyAnswerBottom: $('#copyAnswerBottom'),
   exportAnswer: $('#exportAnswer'), status: $('#status'), statusText: $('#statusText'),
+  exportHistory: $('#exportHistory'), importHistory: $('#importHistory'), historyImportFile: $('#historyImportFile'),
+  exportSavedPrompts: $('#exportSavedPrompts'), importSavedPrompts: $('#importSavedPrompts'),
+  savedPromptImportFile: $('#savedPromptImportFile'),
   themeToggle: $('#themeToggle'), themeIcon: $('#themeIcon'), history: $('#history'),
   historyCount: $('#historyCount'), historySearch: $('#historySearch'), clearHistory: $('#clearHistory'),
   sessionMetric: $('#sessionMetric'), latencyMetric: $('#latencyMetric'), latencyCaption: $('#latencyCaption'),
@@ -132,8 +135,10 @@ function safelyReadStorage(key, fallback) {
 function safelyWriteStorage(key, value) {
   try {
     localStorage.setItem(key, value);
+    return true;
   } catch {
     showToast('Browser storage is unavailable; this change may not persist.', 'warning');
+    return false;
   }
 }
 
@@ -609,7 +614,7 @@ function updateSessionMetrics() {
 }
 
 function persistSavedPrompts() {
-  safelyWriteStorage('nodeai-saved-prompts', JSON.stringify(savedPrompts));
+  return safelyWriteStorage('nodeai-saved-prompts', JSON.stringify(savedPrompts));
 }
 
 function renderSavedPrompts() {
@@ -674,16 +679,21 @@ function saveCurrentPrompt() {
     showToast('This prompt is already saved', 'warning');
     return;
   }
-  savedPrompts.unshift({
+  const saved = {
     id: (window.crypto && typeof window.crypto.randomUUID === 'function')
       ? window.crypto.randomUUID()
       : String(Date.now()) + '-' + Math.random().toString(36).slice(2, 8),
     mode: currentMode,
     prompt,
     savedAt: new Date().toISOString()
-  });
-  savedPrompts = savedPrompts.slice(0, 100);
-  persistSavedPrompts();
+  };
+  const previousPrompts = savedPrompts;
+  savedPrompts = [saved, ...savedPrompts].slice(0, 100);
+  if (!persistSavedPrompts()) {
+    savedPrompts = previousPrompts;
+    renderSavedPrompts();
+    return;
+  }
   renderSavedPrompts();
   $('.saved-prompt-section').open = true;
   showToast('Prompt saved in this browser');
@@ -1196,11 +1206,173 @@ function clearHistory() {
     return;
   }
   if (!window.confirm('Clear the sessions saved in this browser? This cannot be undone.')) return;
+  const previousHistory = historyCache;
   historyCache = [];
-  safelyWriteStorage(HISTORY_STORAGE_KEY, '[]');
+  if (!safelyWriteStorage(HISTORY_STORAGE_KEY, '[]')) {
+    historyCache = previousHistory;
+    updateSessionMetrics();
+    renderHistory();
+    showToast('History could not be cleared from browser storage.', 'error');
+    return;
+  }
   updateSessionMetrics();
   renderHistory();
   showToast('Browser history cleared');
+}
+
+
+function downloadJsonFile(filename, value) {
+  const blob = new Blob([JSON.stringify(value, null, 2) + '\n'], { type: 'application/json;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  link.hidden = true;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function backupTimestamp() {
+  return new Date().toISOString().replace(/[:.]/g, '-');
+}
+
+function exportBrowserHistory() {
+  if (!historyCache.length) {
+    showToast('There are no sessions to export yet', 'warning');
+    return;
+  }
+  const archive = window.NodeAIDataTools.createHistoryArchive(historyCache);
+  downloadJsonFile('nodeai-history-' + backupTimestamp() + '.json', archive);
+  showToast('Exported ' + archive.entries.length + ' browser sessions');
+}
+
+function exportBrowserSavedPrompts() {
+  if (!savedPrompts.length) {
+    showToast('Save a prompt before exporting the prompt library', 'warning');
+    return;
+  }
+  const archive = window.NodeAIDataTools.createSavedPromptArchive(savedPrompts);
+  downloadJsonFile('nodeai-saved-prompts-' + backupTimestamp() + '.json', archive);
+  showToast('Exported ' + archive.prompts.length + ' saved prompts');
+}
+
+async function readBackupFile(file) {
+  if (!file) return '';
+  if (file.size > window.NodeAIDataTools.MAX_ARCHIVE_BYTES) {
+    throw new Error('This backup is too large. The maximum supported file size is 2 MB.');
+  }
+  return file.text();
+}
+
+function uniqueHistoryKey(item) {
+  return item.id || [item.mode, item.prompt, item.answer].join('\u001f');
+}
+
+async function importBrowserHistory(file) {
+  if (!file) return;
+  const previousHistory = historyCache;
+  try {
+    const parsed = window.NodeAIDataTools.parseHistoryArchive(await readBackupFile(file));
+    const existingIds = new Set(historyCache.map((item) => item.id));
+    const semanticKey = (item) => [item.mode, item.prompt, item.answer].join('\u001f');
+    const existingSemantic = new Set(historyCache.map(semanticKey));
+    const imported = [];
+    let duplicates = 0;
+    for (const item of parsed.entries) {
+      const key = uniqueHistoryKey(item);
+      const semantic = semanticKey(item);
+      if (existingIds.has(key) || existingSemantic.has(semantic)) {
+        duplicates++;
+        continue;
+      }
+      existingIds.add(key);
+      existingSemantic.add(semantic);
+      imported.push(item);
+    }
+
+    const merged = [...imported, ...historyCache]
+      .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+    const bounded = [];
+    let storageSkipped = 0;
+    for (const item of merged) {
+      if (bounded.length >= LOCAL_HISTORY_LIMIT) {
+        storageSkipped++;
+        continue;
+      }
+      const candidate = [...bounded, item];
+      if (new TextEncoder().encode(JSON.stringify(candidate)).length > 1800 * 1024) {
+        storageSkipped++;
+        continue;
+      }
+      bounded.push(item);
+    }
+    historyCache = bounded;
+    if (!safelyWriteStorage(HISTORY_STORAGE_KEY, JSON.stringify(historyCache))) {
+      historyCache = previousHistory;
+      updateSessionMetrics();
+      renderHistory();
+      throw new Error('The browser refused to store this import. Existing history has been kept unchanged.');
+    }
+    updateSessionMetrics();
+    renderHistory();
+    showToast('Imported ' + imported.length + ' sessions · ' + duplicates + ' duplicates ignored' +
+      (parsed.skipped ? ' · ' + parsed.skipped + ' invalid skipped' : '') +
+      (storageSkipped ? ' · ' + storageSkipped + ' storage/limit skipped' : ''));
+  } catch (error) {
+    historyCache = previousHistory;
+    updateSessionMetrics();
+    renderHistory();
+    showToast(error.message || 'Could not import that session backup', 'error');
+  } finally {
+    elements.historyImportFile.value = '';
+  }
+}
+
+async function importBrowserSavedPrompts(file) {
+  if (!file) return;
+  const previousPrompts = savedPrompts;
+  try {
+    const parsed = window.NodeAIDataTools.parseSavedPromptArchive(await readBackupFile(file));
+    const existingKeys = new Set(savedPrompts.map((item) => item.id));
+    const semanticKeys = new Set(savedPrompts.map((item) => item.mode + '\u001f' + item.prompt));
+    let imported = 0;
+    let duplicates = 0;
+    let limitSkipped = 0;
+    const nextPrompts = [...savedPrompts];
+    for (const item of parsed.prompts) {
+      const semantic = item.mode + '\u001f' + item.prompt;
+      if (existingKeys.has(item.id) || semanticKeys.has(semantic)) {
+        duplicates++;
+        continue;
+      }
+      if (nextPrompts.length >= 100) {
+        limitSkipped++;
+        continue;
+      }
+      existingKeys.add(item.id);
+      semanticKeys.add(semantic);
+      nextPrompts.push(item);
+      imported++;
+    }
+    savedPrompts = nextPrompts;
+    if (!persistSavedPrompts()) {
+      savedPrompts = previousPrompts;
+      renderSavedPrompts();
+      throw new Error('The browser refused to store these prompts. Your existing library has been kept unchanged.');
+    }
+    renderSavedPrompts();
+    showToast('Imported ' + imported + ' prompts · ' + duplicates + ' duplicates ignored' +
+      (parsed.skipped ? ' · ' + parsed.skipped + ' invalid skipped' : '') +
+      (limitSkipped ? ' · ' + limitSkipped + ' over limit skipped' : ''));
+  } catch (error) {
+    savedPrompts = previousPrompts;
+    renderSavedPrompts();
+    showToast(error.message || 'Could not import that prompt backup', 'error');
+  } finally {
+    elements.savedPromptImportFile.value = '';
+  }
 }
 
 function openCommandPalette() {
@@ -1236,6 +1408,18 @@ function runCommand(command) {
   } else if (command === 'theme') {
     setTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
     closeCommandPalette();
+  } else if (command === 'export-history') {
+    closeCommandPalette();
+    exportBrowserHistory();
+  } else if (command === 'import-history') {
+    closeCommandPalette();
+    elements.historyImportFile.click();
+  } else if (command === 'export-prompts') {
+    closeCommandPalette();
+    exportBrowserSavedPrompts();
+  } else if (command === 'import-prompts') {
+    closeCommandPalette();
+    elements.savedPromptImportFile.click();
   }
 }
 
@@ -1284,6 +1468,12 @@ elements.copyAnswer.addEventListener('click', () => copyText(currentAnswer));
 elements.copyAnswerBottom.addEventListener('click', () => copyText(currentAnswer));
 elements.exportAnswer.addEventListener('click', exportAnswer);
 elements.clearHistory.addEventListener('click', clearHistory);
+elements.exportHistory.addEventListener('click', exportBrowserHistory);
+elements.importHistory.addEventListener('click', () => elements.historyImportFile.click());
+elements.historyImportFile.addEventListener('change', () => importBrowserHistory(elements.historyImportFile.files?.[0]));
+elements.exportSavedPrompts.addEventListener('click', exportBrowserSavedPrompts);
+elements.importSavedPrompts.addEventListener('click', () => elements.savedPromptImportFile.click());
+elements.savedPromptImportFile.addEventListener('change', () => importBrowserSavedPrompts(elements.savedPromptImportFile.files?.[0]));
 elements.historySearch.addEventListener('input', renderHistory);
 elements.themeToggle.addEventListener('click', () => setTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'));
 elements.closeCommand.addEventListener('click', closeCommandPalette);
