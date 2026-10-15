@@ -138,6 +138,14 @@ test('live stream forwards validated context and tone settings to provider', asy
   });
   const body = await response.text();
   assert.equal(response.status, 200);
+  const correlationId = response.headers.get('x-request-id');
+  assert.match(correlationId || '', /^[0-9a-f-]{36}$/i);
+  const metaEvent = body.match(/event: meta\ndata: ([^\n]+)/);
+  const doneEvent = body.match(/event: done\ndata: ([^\n]+)/);
+  assert.ok(metaEvent, 'stream should include metadata with its request ID');
+  assert.ok(doneEvent, 'stream should include completion metadata');
+  assert.equal(JSON.parse(metaEvent[1]).requestId, correlationId);
+  assert.equal(JSON.parse(doneEvent[1]).requestId, correlationId);
   assert.match(body, /event: delta/);
   assert.match(body, /Contextual /);
   assert.match(body, /answer\./);
