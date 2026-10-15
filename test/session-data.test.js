@@ -70,7 +70,7 @@ test('history import ignores malformed entries and normalizes unsafe optional me
   assert.equal(result.entries[0].model, null);
   assert.equal(result.entries[0].durationMs, null);
   assert.equal(result.entries[1].id.startsWith('imported-'), true);
-  assert.equal(result.entries[1].demoMode, true);
+  assert.equal(result.entries[1].demoMode, false, 'a truthy string must not be treated as a boolean flag');
   assert.match(result.entries[1].createdAt, /^\d{4}-\d{2}-\d{2}T/);
 });
 
