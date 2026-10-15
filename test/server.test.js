@@ -430,7 +430,8 @@ test('Markdown renderer formats headings, inline emphasis, lists, quotes, tables
   assert.match(html, /<ul>[\s\S]*<li>First check<\/li>[\s\S]*<li>Second check<\/li>[\s\S]*<\/ul>/);
   assert.match(html, /<blockquote>[\s\S]*Keep errors predictable[\s\S]*<\/blockquote>/);
   assert.match(html, /data-copy-code/);
-  assert.match(html, /const ok = true;/);
+  assert.match(html, /<span class="token-keyword">const<\/span>/);
+  assert.match(html, /<span class="token-keyword">true<\/span>/);
   assert.match(html, /<thead>/);
   assert.match(html, /<td>200<\/td>/);
 });
