@@ -9,18 +9,18 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=2.5.1">
-  <script src="config.js?v=2.5.1"></script>
-  <script src="markdown.js?v=2.5.1"></script>
-  <script src="session-data.js?v=2.5.1"></script>
-  <script src="script.js?v=2.5.1" defer></script>
+  <link rel="stylesheet" href="style.css?v=2.6.0">
+  <script src="config.js?v=2.6.0"></script>
+  <script src="markdown.js?v=2.6.0"></script>
+  <script src="session-data.js?v=2.6.0"></script>
+  <script src="script.js?v=2.6.0" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to workspace</a>
   <div class="ambient ambient-one" aria-hidden="true"></div>
   <div class="ambient ambient-two" aria-hidden="true"></div>
   <div class="app-shell">
-    <aside class="sidebar" aria-label="Workspace navigation">
+    <aside class="sidebar" id="workspaceSidebar" aria-label="Workspace navigation">
       <a class="brand" href="./" aria-label="NodeAI Studio home">
         <span class="brand-mark">N<span>.</span></span>
         <span class="brand-copy"><strong>NodeAI <span>Studio</span></strong><small>DEVELOPER WORKSPACE</small></span>
@@ -53,12 +53,14 @@
       </details>
       <div class="sidebar-bottom">
         <div class="privacy-note"><span class="privacy-dot"></span><span>History stays in this browser</span></div>
-        <div class="sidebar-footer"><span class="footer-mark">N.</span><span>Built for the next idea.</span><span class="version">v2.5.1</span></div>
+        <div class="sidebar-footer"><span class="footer-mark">N.</span><span>Built for the next idea.</span><span class="version">v2.6.0</span></div>
       </div>
     </aside>
+    <button id="sidebarScrim" class="sidebar-scrim" type="button" aria-label="Close navigation" tabindex="-1"></button>
 
     <main id="main" class="main-area">
       <header class="topbar">
+        <button id="navToggle" class="nav-toggle icon-button" type="button" aria-label="Collapse navigation" aria-controls="workspaceSidebar" aria-expanded="true" title="Collapse or open navigation"><span aria-hidden="true">☰</span></button>
         <div class="breadcrumbs"><span>Workspace</span><span class="crumb-divider">/</span><strong id="breadcrumbMode">AI Chat</strong></div>
         <div class="topbar-actions">
           <button id="providerSettings" class="provider-connect-button" type="button" aria-haspopup="dialog" aria-controls="providerDialog"><span id="providerConnectDot" class="provider-connect-dot" aria-hidden="true"></span><span id="providerConnectLabel">Connect AI</span><span aria-hidden="true">↗</span></button>
@@ -89,6 +91,23 @@
           <article class="metric-card"><span class="metric-icon violet" aria-hidden="true">✳</span><div><span class="metric-label">WORKFLOWS</span><strong>04</strong><small>Focused dev tools</small></div><span class="metric-sparkline spark-violet" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span></article>
           <article class="metric-card"><span class="metric-icon cyan" aria-hidden="true">⌁</span><div><span class="metric-label">SESSIONS SAVED</span><strong id="sessionMetric">—</strong><small>Stored in this browser</small></div><span class="metric-sparkline spark-cyan" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span></article>
           <article class="metric-card"><span class="metric-icon pink" aria-hidden="true">↗</span><div><span class="metric-label">LAST RESPONSE</span><strong id="latencyMetric">—</strong><small id="latencyCaption">Ready for a prompt</small></div><span class="metric-pulse" aria-hidden="true"><i></i><i></i><i></i></span></article>
+        </section>
+
+        <section id="setupGuide" class="setup-guide" aria-labelledby="setupGuideTitle" hidden>
+          <div class="setup-guide-copy">
+            <span class="setup-kicker"><span class="setup-kicker-dot"></span> FIRST-RUN SETUP</span>
+            <h2 id="setupGuideTitle">Your workspace is ready. Connect a model to begin.</h2>
+            <p>NodeAI Studio uses your chosen provider for real answers. Your API key stays in this tab unless you explicitly choose session storage.</p>
+          </div>
+          <div class="setup-steps" aria-label="Getting started">
+            <div class="setup-step"><span class="setup-step-number">01</span><span><strong>Connect a provider</strong><small>Use a key you control</small></span></div>
+            <div class="setup-step"><span class="setup-step-number">02</span><span><strong>Choose a workflow</strong><small>Chat, code, debug or SQL</small></span></div>
+            <div class="setup-step"><span class="setup-step-number">03</span><span><strong>Generate a real answer</strong><small>Streaming, no canned replies</small></span></div>
+          </div>
+          <div class="setup-guide-actions">
+            <button id="setupConnect" class="setup-connect-button" type="button">Connect AI <span aria-hidden="true">↗</span></button>
+            <button class="setup-example-button" type="button" data-mode="code" data-prompt="Create a small, well-tested JavaScript function that validates an email address. Explain the edge cases and include unit tests.">Preview a workflow</button>
+          </div>
         </section>
 
         <section class="workbench" aria-label="AI workbench">
