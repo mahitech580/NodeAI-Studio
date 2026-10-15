@@ -1396,6 +1396,18 @@ function runCommand(command) {
   } else if (command === 'theme') {
     setTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
     closeCommandPalette();
+  } else if (command === 'export-history') {
+    closeCommandPalette();
+    exportBrowserHistory();
+  } else if (command === 'import-history') {
+    closeCommandPalette();
+    elements.historyImportFile.click();
+  } else if (command === 'export-prompts') {
+    closeCommandPalette();
+    exportBrowserSavedPrompts();
+  } else if (command === 'import-prompts') {
+    closeCommandPalette();
+    elements.savedPromptImportFile.click();
   }
 }
 
