@@ -388,6 +388,7 @@ test('static workspace contains advanced controls and serves source assets', asy
   for (const selector of [
     'id="toneSelect"', 'id="stopGeneration"', 'id="commandDialog"', 'id="savedPrompts"',
     'id="providerDialog"', 'id="providerSelect"', 'id="providerApiKey"', 'id="testConnect"',
+    'id="navToggle"', 'id="sidebarScrim"', 'id="workspaceSidebar"', 'id="setupGuide"', 'id="setupConnect"',
     'id="providerSettings"', 'id="loadModels"', 'id="providerModels"',
     'id="exportHistory"', 'id="importHistory"', 'id="exportSavedPrompts"', 'id="importSavedPrompts"',
     'id="regenerateAnswer"', 'id="toggleRawAnswer"', 'id="requestIdAction"', 'id="answerStats"',
@@ -408,6 +409,13 @@ test('static workspace contains advanced controls and serves source assets', asy
   assert.match(script, /window\.NodeAIMarkdown\.renderMarkdown/);
   assert.match(script, /currentlyRaw/);
   assert.match(script, /function updateRequestId/);
+  assert.match(script, /function syncNavigationLayout/);
+  assert.match(script, /function toggleNavigationLayout/);
+  assert.match(script, /elements\.setupGuide\.hidden = connected \|\| serverAIConfigured/);
+  const styles = await (await fetch(base + '/style.css')).text();
+  assert.match(styles, /\.setup-guide/);
+  assert.match(styles, /\.app-shell\.sidebar-collapsed/);
+  assert.match(styles, /\.nav-toggle/);
   assert.match(script, /requestIdAction\.addEventListener/);
   assert.match(script, /function updateAnswerStats\(answer, inference = null\)/);
   assert.match(script, /calculateAnswerStats/);
