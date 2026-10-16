@@ -1,0 +1,47 @@
+name: Bug report
+description: Report a reproducible problem in NodeAI Studio
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: "Never include API keys, tokens, private prompts, or personal data in a report."
+  - type: textarea
+    id: summary
+    attributes:
+      label: What happened?
+      description: Describe the expected and actual behavior.
+      placeholder: Expected… / Actual…
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      placeholder: "1. Open… 2. Select… 3. Observe…"
+    validations:
+      required: true
+  - type: dropdown
+    id: workflow
+    attributes:
+      label: Workflow
+      options:
+        - AI Chat
+        - Code Generator
+        - AI Debugger
+        - SQL Assistant
+        - Provider setup
+        - Session history or backups
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: runtime
+    attributes:
+      label: Browser or Node.js version
+      placeholder: "e.g. Chrome version / Node.js 22.x"
+  - type: textarea
+    id: logs
+    attributes:
+      label: Redacted error details
+      description: Remove credentials and private data before sharing.
