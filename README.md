@@ -4,6 +4,11 @@ A responsive developer workspace for AI-assisted engineering questions, code gen
 
 **Stack:** Node.js 22+, Express 5, OpenAI-compatible SDK clients, vanilla HTML/CSS/JavaScript, Node's native test runner.
 
+## Get started
+
+- **[Quick start guide](docs/QUICKSTART.md):** install, run checks, connect a provider, keyboard shortcuts, and browser backups.
+- **[Troubleshooting guide](docs/TROUBLESHOOTING.md):** diagnose provider errors, API availability, streaming, and missing local history.
+
 ## Application features
 
 - **Four workflows:** Chat, Code Generator, AI Debugger, and SQL Assistant each use a dedicated system prompt and real provider-backed completion.
@@ -30,11 +35,14 @@ A responsive developer workspace for AI-assisted engineering questions, code gen
 
 Requirements: Node.js 22+ and npm.
 
-    git clone https://github.com/mahitech580/NodeAI-Studio.git
-    cd NodeAI-Studio
-    npm ci
-    cp .env.example .env
-    npm start
+```bash
+git clone https://github.com/mahitech580/NodeAI-Studio.git
+cd NodeAI-Studio
+npm ci
+npm run check
+npm test
+npm start
+```
 
 Open http://localhost:3000.
 
@@ -47,7 +55,7 @@ Without a server `AI_API_KEY` or a key supplied by the browser, live generation 
 | Variable | Description |
 | --- | --- |
 | AI_API_KEY | Optional server-side API key for the selected provider. If absent, connect a browser key in the UI. |
-| AI_PROVIDER | `openai` (default), `gemini`, `groq`, or `openrouter`. | 
+| AI_PROVIDER | `openai` (default), `gemini`, `groq`, or `openrouter`. |
 | AI_MODEL | Optional model name; defaults depend on `AI_PROVIDER`. |
 | PORT | HTTP port; defaults to 3000. |
 | NODE_ENV | Set production on a production host. |
@@ -66,10 +74,10 @@ The Render service can use a key stored in its private Environment settings (`AI
 | Method | Endpoint | Description |
 | --- | --- | --- |
 | GET | /api/health | Service health, demo/live state, configured model name, version, and uptime. |
-| GET | /api/config | Supported modes, response styles, prompt/context limits, and streaming capability. | 
+| GET | /api/config | Supported modes, response styles, prompt/context limits, and streaming capability. |
 | GET | /api/ready | Service readiness; does not depend on server-side history storage. |
-| POST | /api/providers/test | Sends a small provider request to verify the connection. | 
-| POST | /api/providers/models | Lists model IDs visible to the selected provider key; returns IDs only. | 
+| POST | /api/providers/test | Sends a small provider request to verify the connection. |
+| POST | /api/providers/models | Lists model IDs visible to the selected provider key; returns IDs only. |
 | POST | /api/ai | Non-streaming generation for API clients. |
 | POST | /api/ai/stream | Server-sent event stream: meta, delta, done, or error. |
 | GET | /api/history | Compatibility endpoint returning an empty list; sessions stay in the browser. |
@@ -79,26 +87,35 @@ AI request JSON fields: mode, tone, prompt, and context. Supported modes are cha
 
 ## Quality checks
 
-    npm run check
-    npm test
+```bash
+npm run check
+npm test
+```
 
 GitHub Actions installs the lockfile, checks JavaScript syntax, and runs the API/streaming regression suite on pushes and pull requests to main.
 
 ## Repository layout
 
-    NodeAI-Studio/
-    ├── .github/workflows/ci.yml
-    ├── public/
-    │   ├── config.js
-    │   ├── index.html
-    │   ├── markdown.js
-    │   ├── script.js
-    │   └── style.css
-    ├── test/server.test.js
-    ├── index.html
-    ├── server.js
-    ├── package.json
-    └── package-lock.json
+```text
+NodeAI-Studio/
+├── .github/workflows/ci.yml
+├── docs/
+│   ├── QUICKSTART.md
+│   └── TROUBLESHOOTING.md
+├── public/
+│   ├── config.js
+│   ├── index.html
+│   ├── markdown.js
+│   ├── script.js
+│   └── style.css
+├── test/
+│   ├── server.test.js
+│   └── session-data.test.js
+├── index.html
+├── server.js
+├── package.json
+└── package-lock.json
+```
 
 ## License
 
