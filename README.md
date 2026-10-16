@@ -8,6 +8,9 @@ A responsive developer workspace for AI-assisted engineering questions, code gen
 
 - **[Quick start guide](docs/QUICKSTART.md):** install, run checks, connect a provider, keyboard shortcuts, and browser backups.
 - **[Troubleshooting guide](docs/TROUBLESHOOTING.md):** diagnose provider errors, API availability, streaming, and missing local history.
+- **[API examples](docs/API_EXAMPLES.md):** health checks, capability discovery, provider tests, generation, and streaming integration notes.
+- **[Contributing](CONTRIBUTING.md):** development workflow, testing expectations, and pull request checklist.
+- **[Security policy](SECURITY.md):** responsible reporting and credential/privacy expectations.
 
 ## Application features
 
